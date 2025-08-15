@@ -1,7 +1,6 @@
 #include "Lexer.hpp"
 #include <gtest/gtest.h>
 
-
 namespace minic
 {
 
