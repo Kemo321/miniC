@@ -5,12 +5,20 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)  # For IDEs/clangd
 
-add_compile_options(
-    -Wall
-    -Wextra
-    -Wpedantic
-    -Werror
-)
+# To turn on production mode, set the PRODUCTION option to ON
+# Compile it with : cmake -DPRODUCTION=ON ..
+option(PRODUCTION "Build in production mode" OFF)
+if(PRODUCTION)
+    add_compile_options(
+        -Wall
+        -Wextra
+        -Wpedantic
+        -Werror
+    )
+else()
+    add_compile_options(-g)
+endif()
+
 
 # Include directories for headers
 include_directories(${CMAKE_SOURCE_DIR}/include)

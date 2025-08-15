@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-TEST(LexerTest, BasicTokens)
+TEST(ExampleTest, Example)
 {
     ASSERT_EQ(1, 1);
 }
