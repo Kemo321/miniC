@@ -91,6 +91,6 @@ jobs:
           path: build-gcc15
       - name: Run unit tests
         run: |
-          chmod +x build-gcc15/tests/tests
+          chmod +x build-gcc15/tests/minic_tests
           cd build-gcc15
           ./tests/minic_tests
