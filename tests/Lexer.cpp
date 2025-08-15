@@ -20,6 +20,8 @@ public:
     using Lexer::skip_whitespace;
     using Lexer::scan_string;
     using Lexer::scan_identifier;
+    using Lexer::handle_indentation;
+    using Lexer::check_indent_consistency;
 
     // Expose member variables
     using Lexer::column_;
@@ -217,4 +219,64 @@ TEST_F(LexerTest, ScanIdentifier)
     ASSERT_EQ(std::get<int>(token.value), 0);
     ASSERT_EQ(token.line, 1);
     ASSERT_EQ(token.column, 22);
+}
+
+TEST_F(LexerTest, HandleIndentation)
+{
+    lexer.source_ = "if (true) {\n    return 0;\n}";
+    lexer.pos_ = 0;
+    lexer.column_ = 1;
+    lexer.line_ = 1;
+
+    while (lexer.peek() != '\n' && !lexer.is_at_end())
+        lexer.advance(); // Move to the end of the first line
+    lexer.advance(); // Skip newline
+    
+    minic::Token indent_token = lexer.handle_indentation();
+    ASSERT_EQ(indent_token.type, minic::TokenType::INDENT);
+    ASSERT_EQ(lexer.indent_levels_.top(), 4); // Assuming 4 spaces for indentation
+}
+
+TEST_F(LexerTest, HandleDedent)
+{
+    // Simulate a block with increased indentation, then dedent
+    lexer.source_ = "if (true) {\n    return 0;\n}\n";
+    lexer.pos_ = 0;
+    lexer.column_ = 1;
+    lexer.line_ = 1;
+
+    // Move to the end of the first line
+    while (lexer.peek() != '\n' && !lexer.is_at_end())
+        lexer.advance();
+    lexer.advance(); // Skip newline
+
+    // Handle indent after first newline
+    minic::Token indent_token = lexer.handle_indentation();
+    ASSERT_EQ(indent_token.type, minic::TokenType::INDENT);
+
+    // Move to the end of the second line
+    while (lexer.peek() != '\n' && !lexer.is_at_end())
+        lexer.advance();
+    lexer.advance(); // Skip newline
+
+    // Handle dedent after second newline
+    minic::Token dedent_token = lexer.handle_indentation();
+    ASSERT_EQ(dedent_token.type, minic::TokenType::DEDENT);
+}
+
+TEST_F(LexerTest, CheckIndentConsistency)
+{
+    lexer.source_ = "if (true) {\n\treturn 0;\n}";
+    lexer.pos_ = 0;
+    lexer.column_ = 1;
+    lexer.line_ = 1;
+
+    while (lexer.peek() != '\n' && !lexer.is_at_end())
+        lexer.advance(); // Move to the end of the first line
+    lexer.advance(); // Skip newline
+
+    EXPECT_NO_THROW(lexer.check_indent_consistency(' '));
+    
+    // Test with mixed indentation
+    EXPECT_THROW(lexer.check_indent_consistency('\t'), std::runtime_error);
 }
