@@ -1,6 +1,6 @@
-#include "miniC/Lexer.hpp"
-#include "miniC/Token.hpp"
+#include "Lexer.hpp"
 #include <gtest/gtest.h>
+
 
 namespace minic
 {
