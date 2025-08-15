@@ -1,6 +1,5 @@
 #include "miniC/Lexer.hpp"
-                #include <iostream>
-
+#include <iostream>
 
 namespace minic
 {
@@ -94,20 +93,53 @@ void Lexer::skip_comment()
 
 Token Lexer::scan_identifier()
 {
-    // TODO: Implement scan_identifier
-    return Token {};
+    std::string identifier;
+    size_t start_col = column_ - 1;
+    while (!is_at_end() && (std::isalnum(peek()) || peek() == '_'))
+    {
+        identifier += advance();
+    }
+    
+    // Check if the identifier is a keyword
+    TokenType type = TokenType::IDENTIFIER; // Default to IDENTIFIER
+    if (identifier == "int") type = TokenType::KEYWORD_INT;
+    else if (identifier == "void") type = TokenType::KEYWORD_VOID;
+    else if (identifier == "if") type = TokenType::KEYWORD_IF;
+    else if (identifier == "else") type = TokenType::KEYWORD_ELSE;
+    else if (identifier == "while") type = TokenType::KEYWORD_WHILE;
+    else if (identifier == "return") type = TokenType::KEYWORD_RETURN;
+
+    return make_token(type, identifier);
 }
 
 Token Lexer::scan_number()
 {
-    // TODO: Implement scan_number
-    return Token {};
+    std::string num;
+    size_t start_col = column_ - 1;
+    num += source_[pos_ - 1]; // Include first digit
+    while (!is_at_end() && std::isdigit(peek()))
+    {
+        num += advance();
+    }
+    return make_token(TokenType::LITERAL_INT, std::stoi(num));
 }
 
 Token Lexer::scan_string()
 {
-    // TODO: Implement scan_string
-    return Token {};
+    std::string str;
+    size_t start_col = column_ - 1;
+    advance(); // Skip opening quote
+    while (!is_at_end() && peek() != '"')
+    {
+        str += advance();
+    }
+    if (!is_at_end())
+    {
+        advance(); // Skip closing quote
+        return make_token(TokenType::LITERAL_STRING, str);
+    }
+    // Handle error: unclosed string literal
+    throw std::runtime_error("Unclosed string literal at line " + std::to_string(line_) + ", column " + std::to_string(start_col));
 }
 
 Token Lexer::handle_indentation()
@@ -118,8 +150,12 @@ Token Lexer::handle_indentation()
 
 Token Lexer::make_token(TokenType type, const std::variant<int, std::string>& value) const
 {
-    // TODO: Implement make_token
-    return Token {};
+    Token token;
+    token.type = type;
+    token.value = value;
+    token.line = line_;
+    token.column = column_;
+    return token;
 }
 
 void Lexer::check_indent_consistency(char c)
