@@ -2,8 +2,6 @@
 #define MINI_C_LEXER_HPP
 #include "Token.hpp"
 #include <stack>
-#include <string>
-#include <variant>
 #include <vector>
 
 /**
