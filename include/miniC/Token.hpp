@@ -86,7 +86,6 @@ struct Token
     std::variant<int, std::string> value; // Holds int literal or string (for identifiers/keywords)
     size_t line;
     size_t column;
-    size_t length; // Length of the token in characters
 };
 
 }

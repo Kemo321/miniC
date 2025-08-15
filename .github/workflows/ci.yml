@@ -32,7 +32,7 @@ jobs:
         run: |
           mkdir build-gcc14
           cd build-gcc14
-          cmake -DBUILD_TESTS=ON ../
+          cmake -DBUILD_TESTS=ON -DPRODUCTION=ON ../
           make
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
@@ -70,7 +70,7 @@ jobs:
         run: |
           mkdir build-gcc15
           cd build-gcc15
-          cmake -DBUILD_TESTS=ON ../
+          cmake -DBUILD_TESTS=ON -DPRODUCTION=ON ../
           make
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
