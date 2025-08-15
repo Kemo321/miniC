@@ -93,4 +93,4 @@ jobs:
         run: |
           chmod +x build-gcc15/tests/tests
           cd build-gcc15
-          ./tests/tests
+          ./tests/minic_tests
