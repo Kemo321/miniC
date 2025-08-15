@@ -144,8 +144,33 @@ Token Lexer::scan_string()
 
 Token Lexer::handle_indentation()
 {
-    // TODO: Implement handle_indentation
-    return Token {};
+    size_t indent = 0;
+    bool is_tab = false;
+    while (!is_at_end() && (peek() == ' ' || peek() == '\t')) {
+        char c = advance();
+        check_indent_consistency(c);
+        if (c == ' ') indent++;
+        else if (c == '\t') indent += 4; // Assume 1 tab = 4 spaces
+        is_tab = (c == '\t');
+    }
+
+    // Skip empty lines
+    if (peek() == '\n' || is_at_end()) {
+        return make_token(TokenType::NEWLINE, "");
+    }
+
+    size_t current_indent = indent_levels_.top();
+    if (indent > current_indent) {
+        indent_levels_.push(indent);
+        return make_token(TokenType::INDENT, "");
+    } else if (indent < current_indent) {
+        indent_levels_.pop();
+        if (indent != indent_levels_.top()) {
+            throw std::runtime_error("Invalid dedent at line " + std::to_string(line_) + ", column " + std::to_string(column_));
+        }
+        return make_token(TokenType::DEDENT, "");
+    }
+    return make_token(TokenType::NEWLINE, ""); // Same indent level
 }
 
 Token Lexer::make_token(TokenType type, const std::variant<int, std::string>& value) const
@@ -160,7 +185,12 @@ Token Lexer::make_token(TokenType type, const std::variant<int, std::string>& va
 
 void Lexer::check_indent_consistency(char c)
 {
-    // TODO: Implement check_indent_consistency
+    static bool has_tab = false, has_space = false;
+    if (c == '\t') has_tab = true;
+    if (c == ' ') has_space = true;
+    if (has_tab && has_space) {
+        throw std::runtime_error("Mixed tabs and spaces at line " + std::to_string(line_) + ", column " + std::to_string(column_ - 1));
+    }
 }
 
 } // namespace minic
