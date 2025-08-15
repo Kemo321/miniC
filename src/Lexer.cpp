@@ -1,4 +1,6 @@
 #include "miniC/Lexer.hpp"
+                #include <iostream>
+
 
 namespace minic
 {
@@ -60,12 +62,34 @@ Token Lexer::next_token()
 
 void Lexer::skip_whitespace()
 {
-    // TODO: Implement skip_whitespace
+    while (peek() == ' ' || peek() == '\t' || peek() == '\r')
+    {
+        advance();
+    }
 }
 
 void Lexer::skip_comment()
 {
-    // TODO: Implement skip_comment
+    if (peek() == '/' && source_[pos_ + 1] == '/')
+    {
+        // Single-line comment
+        while (peek() != '\n' && !is_at_end())
+        {
+            advance();
+        }
+    }
+    else if (peek() == '/' && source_[pos_ + 1] == '*')
+    {
+        // Multi-line comment
+        advance(); // Skip '/'
+        advance(); // Skip '*'
+        while (!(peek() == '*' && source_[pos_ + 1] == '/') && !is_at_end())
+        {
+            advance();
+        }
+        advance(); // Skip '*'
+        advance(); // Skip '/'
+    }
 }
 
 Token Lexer::scan_identifier()
