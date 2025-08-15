@@ -7,5 +7,6 @@ int main(int argc, char** argv) {
         std::cerr << "Usage: cminusminus <input.cmm>\n";
         return 1;
     }
+    std::cout << "Compiling: " << argv[1] << "\n";
     return 0;
 }

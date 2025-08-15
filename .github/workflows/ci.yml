@@ -53,9 +53,9 @@ jobs:
           path: build-gcc14
       - name: Run unit tests
         run: |
-          chmod +x build-gcc14/tests/tests
+          chmod +x build-gcc14/tests/minic_tests
           cd build-gcc14
-          ./tests/tests
+          ./tests/minic_tests
 
   build-gcc11:
     runs-on: ubuntu-22.04
