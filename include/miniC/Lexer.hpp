@@ -35,6 +35,12 @@ public:
     std::vector<minic::Token> Lex();
 
 private:
+    std::string source_;
+    size_t pos_ = 0;
+    size_t line_ = 1;
+    size_t column_ = 1;
+    std::stack<size_t> indent_levels_; // Track indentation levels (in spaces)
+
     /**
      * @brief Returns the current character without advancing the position.
      * @return The current character in the source.
