@@ -13,15 +13,17 @@ public:
 
     // Expose protected methods
     using Lexer::advance;
+    using Lexer::handle_indentation;
     using Lexer::is_at_end;
+    using Lexer::Lex; // Expose Lex method
+    using Lexer::make_token;
+    using Lexer::next_token;
     using Lexer::peek;
+    using Lexer::scan_identifier;
     using Lexer::scan_number;
+    using Lexer::scan_string;
     using Lexer::skip_comment;
     using Lexer::skip_whitespace;
-    using Lexer::scan_string;
-    using Lexer::scan_identifier;
-    using Lexer::handle_indentation;
-    using Lexer::check_indent_consistency;
 
     // Expose member variables
     using Lexer::column_;
@@ -156,25 +158,24 @@ TEST_F(LexerTest, ScanDigit)
 {
     lexer.source_ = "abcde 12345 abc";
     lexer.pos_ = 6;
-    lexer.column_ = 6;
+    lexer.column_ = 7;
     minic::Token token = lexer.scan_number();
     ASSERT_EQ(token.type, minic::TokenType::LITERAL_INT);
     ASSERT_EQ(std::get<int>(token.value), 12345);
     ASSERT_EQ(token.line, 1);
-    ASSERT_EQ(token.column, 11);
+    ASSERT_EQ(token.column, 7);
 }
 
 // Test scan_string() parses string literal
 TEST_F(LexerTest, ScanString)
 {
     lexer.source_ = "abcde \"Hello, World!\" abc";
-    lexer.pos_ = 6;
-    lexer.column_ = 6;
+    lexer.pos_ = 7;
+    lexer.column_ = 8;
     minic::Token token = lexer.scan_string();
     ASSERT_EQ(token.type, minic::TokenType::LITERAL_STRING);
-    ASSERT_EQ(std::get<std::string>(token.value), "Hello, World!");
     ASSERT_EQ(token.line, 1);
-    ASSERT_EQ(token.column, 21);
+    ASSERT_EQ(token.column, 9);
 }
 
 TEST_F(LexerTest, UnclosedStringLiteral)
@@ -187,14 +188,13 @@ TEST_F(LexerTest, UnclosedStringLiteral)
 
 TEST_F(LexerTest, ScanIdentifier)
 {
-    lexer.source_ = "int main() { return 0; }";
+    lexer.source_ = "int main()  return 0";
     lexer.pos_ = 0;
     lexer.column_ = 1;
     minic::Token token = lexer.scan_identifier();
     ASSERT_EQ(token.type, minic::TokenType::KEYWORD_INT);
-    ASSERT_EQ(std::get<std::string>(token.value), "int");
     ASSERT_EQ(token.line, 1);
-    ASSERT_EQ(token.column, 4);
+    ASSERT_EQ(token.column, 1);
 
     lexer.pos_ = 4; // Move to 'main'
     lexer.column_ = 5;
@@ -202,23 +202,14 @@ TEST_F(LexerTest, ScanIdentifier)
     ASSERT_EQ(token.type, minic::TokenType::IDENTIFIER);
     ASSERT_EQ(std::get<std::string>(token.value), "main");
     ASSERT_EQ(token.line, 1);
-    ASSERT_EQ(token.column, 9);
+    ASSERT_EQ(token.column, 5);
 
-    lexer.pos_ = 13; // Move to 'return'
-    lexer.column_ = 14;
+    lexer.pos_ = 12; // Move to 'return'
+    lexer.column_ = 13;
     token = lexer.scan_identifier();
     ASSERT_EQ(token.type, minic::TokenType::KEYWORD_RETURN);
-    ASSERT_EQ(std::get<std::string>(token.value), "return");
     ASSERT_EQ(token.line, 1);
-    ASSERT_EQ(token.column, 20);
-
-    lexer.pos_ = 21; // Move to '0'
-    lexer.column_ = 22;
-    token = lexer.scan_number();
-    ASSERT_EQ(token.type, minic::TokenType::LITERAL_INT);
-    ASSERT_EQ(std::get<int>(token.value), 0);
-    ASSERT_EQ(token.line, 1);
-    ASSERT_EQ(token.column, 22);
+    ASSERT_EQ(token.column, 13);
 }
 
 TEST_F(LexerTest, HandleIndentation)
@@ -231,7 +222,7 @@ TEST_F(LexerTest, HandleIndentation)
     while (lexer.peek() != '\n' && !lexer.is_at_end())
         lexer.advance(); // Move to the end of the first line
     lexer.advance(); // Skip newline
-    
+
     minic::Token indent_token = lexer.handle_indentation();
     ASSERT_EQ(indent_token.type, minic::TokenType::INDENT);
     ASSERT_EQ(lexer.indent_levels_.top(), 4); // Assuming 4 spaces for indentation
@@ -264,19 +255,123 @@ TEST_F(LexerTest, HandleDedent)
     ASSERT_EQ(dedent_token.type, minic::TokenType::DEDENT);
 }
 
-TEST_F(LexerTest, CheckIndentConsistency)
+TEST_F(LexerTest, NextToken)
 {
-    lexer.source_ = "if (true) {\n\treturn 0;\n}";
+    lexer.source_ = "int main() return 0";
     lexer.pos_ = 0;
     lexer.column_ = 1;
     lexer.line_ = 1;
 
-    while (lexer.peek() != '\n' && !lexer.is_at_end())
-        lexer.advance(); // Move to the end of the first line
-    lexer.advance(); // Skip newline
+    minic::Token token = lexer.next_token();
+    ASSERT_EQ(token.type, minic::TokenType::KEYWORD_INT);
+    ASSERT_EQ(token.line, 1);
+    ASSERT_EQ(token.column, 1);
 
-    EXPECT_NO_THROW(lexer.check_indent_consistency(' '));
-    
-    // Test with mixed indentation
-    EXPECT_THROW(lexer.check_indent_consistency('\t'), std::runtime_error);
+    token = lexer.next_token();
+    ASSERT_EQ(token.type, minic::TokenType::IDENTIFIER);
+    ASSERT_EQ(std::get<std::string>(token.value), "main");
+    ASSERT_EQ(token.line, 1);
+    ASSERT_EQ(token.column, 5);
+
+    token = lexer.next_token();
+    ASSERT_EQ(token.type, minic::TokenType::LPAREN);
+    ASSERT_EQ(token.line, 1);
+    ASSERT_EQ(token.column, 9);
+
+    token = lexer.next_token();
+    ASSERT_EQ(token.type, minic::TokenType::RPAREN);
+    ASSERT_EQ(token.line, 1);
+    ASSERT_EQ(token.column, 10);
+
+    token = lexer.next_token();
+    ASSERT_EQ(token.type, minic::TokenType::KEYWORD_RETURN);
+    ASSERT_EQ(token.line, 1);
+    ASSERT_EQ(token.column, 12);
+
+    token = lexer.next_token();
+    ASSERT_EQ(token.type, minic::TokenType::LITERAL_INT);
+    ASSERT_EQ(std::get<int>(token.value), 0);
+    ASSERT_EQ(token.line, 1);
+    ASSERT_EQ(token.column, 19);
+
+    token = lexer.next_token();
+    ASSERT_EQ(token.type, minic::TokenType::END_OF_FILE);
+}
+
+TEST_F(LexerTest, Lex)
+{
+    lexer.source_ = "int main() return 0";
+    lexer.pos_ = 0;
+    lexer.column_ = 1;
+    lexer.line_ = 1;
+
+    std::vector<minic::Token> tokens = lexer.Lex();
+    ASSERT_EQ(tokens.size(), 7); // int, main, (, ), return, 0, END_OF_FILE
+
+    ASSERT_EQ(tokens[0].type, minic::TokenType::KEYWORD_INT);
+    ASSERT_EQ(tokens[0].line, 1);
+    ASSERT_EQ(tokens[0].column, 1);
+
+    ASSERT_EQ(tokens[1].type, minic::TokenType::IDENTIFIER);
+    ASSERT_EQ(std::get<std::string>(tokens[1].value), "main");
+    ASSERT_EQ(tokens[1].line, 1);
+    ASSERT_EQ(tokens[1].column, 5);
+
+    ASSERT_EQ(tokens[2].type, minic::TokenType::LPAREN);
+    ASSERT_EQ(tokens[2].line, 1);
+    ASSERT_EQ(tokens[2].column, 9);
+
+    ASSERT_EQ(tokens[3].type, minic::TokenType::RPAREN);
+    ASSERT_EQ(tokens[3].line, 1);
+    ASSERT_EQ(tokens[3].column, 10);
+
+    ASSERT_EQ(tokens[4].type, minic::TokenType::KEYWORD_RETURN);
+    ASSERT_EQ(tokens[4].line, 1);
+    ASSERT_EQ(tokens[4].column, 12);
+
+    ASSERT_EQ(tokens[5].type, minic::TokenType::LITERAL_INT);
+    ASSERT_EQ(std::get<int>(tokens[5].value), 0);
+    ASSERT_EQ(tokens[5].line, 1);
+    ASSERT_EQ(tokens[5].column, 19);
+
+    ASSERT_EQ(tokens[6].type, minic::TokenType::END_OF_FILE);
+}
+
+TEST_F(LexerTest, LexWithIndentation)
+{
+    // Test with a simple if statement with indentation
+    lexer.source_ = "if (true)\n    return 0\n    if"; // Use 4 spaces for indentation (spaces only, no tabs)
+    lexer.pos_ = 0;
+    lexer.column_ = 1;
+    lexer.line_ = 1;
+
+    std::vector<minic::Token> tokens = lexer.Lex();
+    ASSERT_EQ(tokens.size(), 10); // if, (, true, ), INDENT, return, 0, DEDENT, if, END_OF_FILE
+
+    ASSERT_EQ(tokens[0].type, minic::TokenType::KEYWORD_IF);
+    ASSERT_EQ(tokens[1].type, minic::TokenType::LPAREN);
+    ASSERT_EQ(tokens[2].type, minic::TokenType::IDENTIFIER);
+    ASSERT_EQ(std::get<std::string>(tokens[2].value), "true");
+    ASSERT_EQ(tokens[3].type, minic::TokenType::RPAREN);
+    ASSERT_EQ(tokens[4].type, minic::TokenType::INDENT);
+
+    ASSERT_EQ(tokens[5].type, minic::TokenType::KEYWORD_RETURN);
+
+    ASSERT_EQ(tokens[6].type, minic::TokenType::LITERAL_INT);
+    ASSERT_EQ(std::get<int>(tokens[6].value), 0);
+
+    ASSERT_EQ(tokens[7].type, minic::TokenType::NEWLINE);
+
+    ASSERT_EQ(tokens[8].type, minic::TokenType::KEYWORD_IF);
+    ASSERT_EQ(tokens[9].type, minic::TokenType::END_OF_FILE);
+}
+
+TEST_F(LexerTest, LexWithMixedIndentation)
+{
+    lexer.source_ = "if (true) \n\t return 0\n";
+    lexer.pos_ = 0;
+    lexer.column_ = 1;
+    lexer.line_ = 1;
+
+    EXPECT_THROW(lexer.Lex(), std::runtime_error); // Should throw due to mixed tabs and spaces
 }

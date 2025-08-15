@@ -1,5 +1,7 @@
 #include "miniC/Lexer.hpp"
+#include <deque> // added for pending dedent queue
 #include <iostream>
+#include <stdexcept>
 
 namespace minic
 {
@@ -15,8 +17,17 @@ Lexer::Lexer(const std::string& source)
 
 std::vector<minic::Token> Lexer::Lex()
 {
-    // TODO: Implement Lex method
-    return {};
+    std::vector<minic::Token> tokens;
+    while (!is_at_end())
+    {
+        Token token = next_token();
+        if (token.type == TokenType::END_OF_FILE)
+            break; // Stop processing at end of file
+        tokens.push_back(token);
+    }
+    // Add an end of file token
+    tokens.push_back(make_token(TokenType::END_OF_FILE, {}));
+    return tokens;
 }
 
 char Lexer::peek() const
@@ -55,8 +66,126 @@ bool Lexer::is_at_end() const
 
 Token Lexer::next_token()
 {
-    // TODO: Implement next_token
-    return Token {};
+    skip_whitespace();
+    if (is_at_end())
+    {
+        return make_token(TokenType::END_OF_FILE);
+    }
+    char current = peek();
+    if (current == '/' && pos_ + 1 < source_.size() && source_[pos_ + 1] == '/') // Single-line comment
+    {
+        skip_comment();
+        return next_token();
+    }
+    else if (current == '/' && pos_ + 1 < source_.size() && source_[pos_ + 1] == '*') // Multi-line comment
+    {
+        skip_comment();
+        return next_token();
+    }
+    else if (std::isdigit(current)) // Number literal
+    {
+        return scan_number();
+    }
+    else if (std::isalpha(current) || current == '_') // Identifier or keyword
+    {
+        return scan_identifier();
+    }
+    else if (current == '"') // String literal
+    {
+        return scan_string();
+    }
+    else if (current == '(') // Left parenthesis
+    {
+        Token token = make_token(TokenType::LPAREN);
+        advance(); // Skip '('
+        return token;
+    }
+    else if (current == ')') // Right parenthesis
+    {
+        Token token = make_token(TokenType::RPAREN);
+        advance(); // Skip ')'
+        return token;
+    }
+    else if (current == '\n') // Newline
+    {
+        Token token = handle_indentation();
+        // handle_indentation now consumes the newline(s) and prepares any pending DEDENTs
+        return token;
+    }
+    else if (current == ' ' || current == '\t' || current == '\r') // Whitespace
+    {
+        advance(); // Skip whitespace characters
+        return next_token();
+    }
+    else
+    {
+        switch (current)
+        {
+        case '+':
+        {
+            Token token = make_token(TokenType::OP_PLUS);
+            advance();
+            return token;
+        }
+        case '-':
+        {
+            Token token = make_token(TokenType::OP_MINUS);
+            advance();
+            return token;
+        }
+        case '*':
+        {
+            Token token = make_token(TokenType::OP_MULTIPLY);
+            advance();
+            return token;
+        }
+        case '/':
+        {
+            Token token = make_token(TokenType::OP_DIVIDE);
+            advance();
+            return token;
+        }
+        case '=':
+        {
+            if (peek() == '=' && pos_ + 1 < source_.size() && source_[pos_ + 1] == '=')
+            {
+                Token token = make_token(TokenType::OP_EQUAL);
+                advance(); // Skip second '='
+                advance(); // Skip first '='
+                return token;
+            }
+            Token token = make_token(TokenType::OP_ASSIGN);
+            advance();
+            return token;
+        }
+        case '<':
+        {
+            Token token = make_token(TokenType::OP_LESS);
+            advance();
+            return token;
+        }
+        case '>':
+        {
+            Token token = make_token(TokenType::OP_GREATER);
+            advance();
+            return token;
+        }
+        case ':':
+        {
+            Token token = make_token(TokenType::COLON);
+            advance();
+            return token;
+        }
+        case ',':
+        {
+            Token token = make_token(TokenType::COMMA);
+            advance();
+            return token;
+        }
+        default:
+            throw std::runtime_error("Unexpected character: " + std::string(1, current));
+        }
+    }
 }
 
 void Lexer::skip_whitespace()
@@ -69,7 +198,7 @@ void Lexer::skip_whitespace()
 
 void Lexer::skip_comment()
 {
-    if (peek() == '/' && source_[pos_ + 1] == '/')
+    if (peek() == '/' && pos_ + 1 < source_.size() && source_[pos_ + 1] == '/')
     {
         // Single-line comment
         while (peek() != '\n' && !is_at_end())
@@ -77,58 +206,80 @@ void Lexer::skip_comment()
             advance();
         }
     }
-    else if (peek() == '/' && source_[pos_ + 1] == '*')
+    else if (peek() == '/' && pos_ + 1 < source_.size() && source_[pos_ + 1] == '*')
     {
         // Multi-line comment
         advance(); // Skip '/'
         advance(); // Skip '*'
-        while (!(peek() == '*' && source_[pos_ + 1] == '/') && !is_at_end())
+        while (!(peek() == '*' && pos_ + 1 < source_.size() && source_[pos_ + 1] == '/') && !is_at_end())
         {
             advance();
         }
-        advance(); // Skip '*'
-        advance(); // Skip '/'
+        if (!is_at_end())
+        {
+            advance(); // Skip '*'
+            advance(); // Skip '/'
+        }
     }
 }
 
 Token Lexer::scan_identifier()
 {
     std::string identifier;
-    size_t start_col = column_ - 1;
-    while (!is_at_end() && (std::isalnum(peek()) || peek() == '_'))
+    Token token = make_token(TokenType::IDENTIFIER);
+    while (!is_at_end() && (std::isalnum(peek()) || peek() == '_' || peek() == '$')) // Allow alphanumeric and underscore
     {
         identifier += advance();
     }
-    
+
     // Check if the identifier is a keyword
     TokenType type = TokenType::IDENTIFIER; // Default to IDENTIFIER
-    if (identifier == "int") type = TokenType::KEYWORD_INT;
-    else if (identifier == "void") type = TokenType::KEYWORD_VOID;
-    else if (identifier == "if") type = TokenType::KEYWORD_IF;
-    else if (identifier == "else") type = TokenType::KEYWORD_ELSE;
-    else if (identifier == "while") type = TokenType::KEYWORD_WHILE;
-    else if (identifier == "return") type = TokenType::KEYWORD_RETURN;
+    if (identifier == "int")
+        type = TokenType::KEYWORD_INT;
+    else if (identifier == "void")
+        type = TokenType::KEYWORD_VOID;
+    else if (identifier == "if")
+        type = TokenType::KEYWORD_IF;
+    else if (identifier == "else")
+        type = TokenType::KEYWORD_ELSE;
+    else if (identifier == "while")
+        type = TokenType::KEYWORD_WHILE;
+    else if (identifier == "return")
+        type = TokenType::KEYWORD_RETURN;
 
-    return make_token(type, identifier);
+    if (type == TokenType::IDENTIFIER)
+    {
+        token.value = identifier; // Store the identifier as a string
+    }
+
+    token.type = type;
+    return token;
 }
 
 Token Lexer::scan_number()
 {
     std::string num;
-    size_t start_col = column_ - 1;
-    num += source_[pos_ - 1]; // Include first digit
+    Token token = make_token(TokenType::LITERAL_INT);
     while (!is_at_end() && std::isdigit(peek()))
     {
         num += advance();
     }
-    return make_token(TokenType::LITERAL_INT, std::stoi(num));
+    try
+    {
+        token.value = std::stoi(num);
+    }
+    catch (const std::invalid_argument&)
+    {
+        throw std::runtime_error("Invalid number literal at line " + std::to_string(line_) + ", column " + std::to_string(column_));
+    }
+    return token;
 }
 
 Token Lexer::scan_string()
 {
     std::string str;
-    size_t start_col = column_ - 1;
     advance(); // Skip opening quote
+    Token token = make_token(TokenType::LITERAL_STRING);
     while (!is_at_end() && peek() != '"')
     {
         str += advance();
@@ -136,61 +287,108 @@ Token Lexer::scan_string()
     if (!is_at_end())
     {
         advance(); // Skip closing quote
-        return make_token(TokenType::LITERAL_STRING, str);
+        token.value = str;
+        return token;
     }
     // Handle error: unclosed string literal
-    throw std::runtime_error("Unclosed string literal at line " + std::to_string(line_) + ", column " + std::to_string(start_col));
+    throw std::runtime_error("Unclosed string literal at line " + std::to_string(line_) + ", column " + std::to_string(column_));
 }
 
 Token Lexer::handle_indentation()
 {
-    size_t indent = 0;
-    bool is_tab = false;
-    while (!is_at_end() && (peek() == ' ' || peek() == '\t')) {
-        char c = advance();
-        check_indent_consistency(c);
-        if (c == ' ') indent++;
-        else if (c == '\t') indent += 4; // Assume 1 tab = 4 spaces
-        is_tab = (c == '\t');
+    // A small FIFO to hold extra DEDENT tokens so they can be returned across
+    // repeated calls to next_token().
+    static std::deque<Token> pending_dedents;
+
+    // If we already prepared dedents from a previous newline, emit them first.
+    if (!pending_dedents.empty())
+    {
+        Token t = pending_dedents.front();
+        pending_dedents.pop_front();
+        return t;
     }
 
-    // Skip empty lines
-    if (peek() == '\n' || is_at_end()) {
+    // We expect to be called when peek() == '\n'. Consume that newline(s).
+    // Consume a single newline (the one that triggered calling this function)
+    if (peek() == '\n')
+    {
+        advance(); // increments line_ and resets column_
+    }
+
+    // Skip any additional consecutive newline characters (blank lines).
+    // For blank lines we do not produce INDENT/DEDENT—return a single NEWLINE.
+    while (peek() == '\n' && !is_at_end())
+    {
+        advance();
+    }
+
+    // Now count indentation (spaces/tabs) at the start of the next non-blank line.
+    const int TAB_WIDTH = 4;
+    size_t indent = 0;
+    bool has_tab = false, has_space = false;
+    while (!is_at_end() && (peek() == ' ' || peek() == '\t'))
+    {
+        char c = advance();
+        if (c == '\t')
+            has_tab = true;
+        if (c == ' ')
+            has_space = true;
+        if (has_tab && has_space)
+        {
+            throw std::runtime_error("Mixed tabs and spaces at line " + std::to_string(line_) + ", column " + std::to_string(column_ - 1));
+        }
+        if (c == ' ')
+            indent += 1;
+        else if (c == '\t')
+            indent += TAB_WIDTH;
+    }
+
+    // If we reached EOF or the next line is blank (immediately another newline),
+    // just return a NEWLINE token — nothing to change in indentation levels.
+    if (is_at_end() || peek() == '\n')
+    {
         return make_token(TokenType::NEWLINE, "");
     }
 
+    // Compare with current indentation level
+    if (indent_levels_.empty())
+    {
+        throw std::runtime_error("Internal lexer error: empty indent stack");
+    }
     size_t current_indent = indent_levels_.top();
-    if (indent > current_indent) {
+
+    if (indent > current_indent)
+    {
+        // Increased indentation -> push and emit INDENT
         indent_levels_.push(indent);
         return make_token(TokenType::INDENT, "");
-    } else if (indent < current_indent) {
-        indent_levels_.pop();
-        if (indent != indent_levels_.top()) {
+    }
+    else if (indent < current_indent)
+    {
+        // Decreased indentation -> pop until we reach the matching indentation level.
+        // Emit one DEDENT now and enqueue remaining DEDENTs (if any).
+        while (!indent_levels_.empty() && indent < indent_levels_.top())
+        {
+            indent_levels_.pop();
+            pending_dedents.push_back(make_token(TokenType::DEDENT, ""));
+        }
+        if (indent_levels_.empty() || indent != indent_levels_.top())
+        {
             throw std::runtime_error("Invalid dedent at line " + std::to_string(line_) + ", column " + std::to_string(column_));
         }
-        return make_token(TokenType::DEDENT, "");
+        // Pop front and return the first DEDENT (the rest remain in pending_dedents).
+        Token t = pending_dedents.front();
+        pending_dedents.pop_front();
+        return t;
     }
-    return make_token(TokenType::NEWLINE, ""); // Same indent level
+
+    // Same indentation level -> just return NEWLINE token
+    return make_token(TokenType::NEWLINE, "");
 }
 
 Token Lexer::make_token(TokenType type, const std::variant<int, std::string>& value) const
 {
-    Token token;
-    token.type = type;
-    token.value = value;
-    token.line = line_;
-    token.column = column_;
-    return token;
-}
-
-void Lexer::check_indent_consistency(char c)
-{
-    static bool has_tab = false, has_space = false;
-    if (c == '\t') has_tab = true;
-    if (c == ' ') has_space = true;
-    if (has_tab && has_space) {
-        throw std::runtime_error("Mixed tabs and spaces at line " + std::to_string(line_) + ", column " + std::to_string(column_ - 1));
-    }
+    return Token { type, value, line_, column_ };
 }
 
 } // namespace minic
