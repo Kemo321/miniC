@@ -57,9 +57,9 @@ jobs:
           cd build-gcc14
           ./tests/minic_tests
 
-  build-gcc11:
+  build-gcc15:
     runs-on: ubuntu-22.04
-    container: gcc:11
+    container: gcc:15
     steps:
       - uses: actions/checkout@v4
       - name: Install dependencies
@@ -68,29 +68,29 @@ jobs:
           apt install --yes cmake clang-tidy
       - name: Build
         run: |
-          mkdir build-gcc11
-          cd build-gcc11
+          mkdir build-gcc15
+          cd build-gcc15
           cmake -DBUILD_TESTS=ON ../
           make
       - name: Archive build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: build-gcc11
-          path: build-gcc11/
+          name: build-gcc15
+          path: build-gcc15/
 
-  test-gcc11:
+  test-gcc15:
     runs-on: ubuntu-22.04
-    container: gcc:11
-    needs: build-gcc11
+    container: gcc:15
+    needs: build-gcc15
     steps:
       - uses: actions/checkout@v4
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: build-gcc11
-          path: build-gcc11
+          name: build-gcc15
+          path: build-gcc15
       - name: Run unit tests
         run: |
-          chmod +x build-gcc11/tests/tests
-          cd build-gcc11
+          chmod +x build-gcc15/tests/tests
+          cd build-gcc15
           ./tests/tests
