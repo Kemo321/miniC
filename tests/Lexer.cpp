@@ -14,10 +14,10 @@ public:
     using Lexer::advance;
     using Lexer::is_at_end;
     using Lexer::peek;
-    /* not yet implemented
-    using Lexer::next_token;
     using Lexer::skip_whitespace;
     using Lexer::skip_comment;
+    /* not yet implemented
+    using Lexer::next_token;
     using Lexer::scan_identifier;
     using Lexer::scan_number;
     using Lexer::scan_string;
@@ -87,4 +87,67 @@ TEST_F(LexerTest, AdvanceNewLine)
     ASSERT_EQ(lexer.column_, 1); // Column should reset to 1
     ASSERT_EQ(lexer.line_, 2); // Line should increment to 2
     ASSERT_EQ(lexer.pos_, 13); // Position should now be 12
+}
+
+TEST_F(LexerTest, IsAtEnd)
+{
+    ASSERT_FALSE(lexer.is_at_end()); // Should return false as we are not at the end
+    lexer.pos_ = lexer.source_.size(); // Move to the end
+    ASSERT_TRUE(lexer.is_at_end()); // Should return true at the end of input
+}
+
+TEST_F(LexerTest, SkipWhitespace)
+{
+    lexer.source_ = "   int main() \n  { return 0; }";
+    lexer.pos_ = 0; // Reset position to start
+    lexer.skip_whitespace(); // Should skip leading spaces
+    ASSERT_EQ(lexer.peek(), 'i'); // Next character should be 'i'
+    ASSERT_EQ(lexer.column_, 4); // Column should be 4 after skipping spaces
+    ASSERT_EQ(lexer.line_, 1); // Line should still be 1
+    ASSERT_EQ(lexer.pos_, 3); // Position should be at 'i'
+}
+
+TEST_F(LexerTest, SkipCommentSingleLine)
+{
+    lexer.source_ = "int main() // This is a comment\n{ return 0; }";
+    lexer.pos_ = 0; // Reset position to start
+    lexer.skip_comment(); // Should skip the single-line comment
+    ASSERT_EQ(lexer.peek(), 'i'); // Next character should be 'i'
+    ASSERT_EQ(lexer.column_, 1); // Column should be 1
+    ASSERT_EQ(lexer.line_, 1); // Line should still be 1
+    ASSERT_EQ(lexer.pos_, 0); // Position should still be at start
+}
+
+TEST_F(LexerTest, SkipCommentMultiLine)
+{
+    lexer.source_ = "int main() /* This is a \n multi-line comment */ { return 0; }";
+    lexer.pos_ = 0; // Reset position to start
+    lexer.line_ = 1; // Reset line to 1
+    lexer.column_ = 1; // Reset column to 1
+    while (lexer.peek() != '/') // Advance to the start of the comment
+        lexer.advance();
+    ASSERT_EQ(lexer.line_, 1); // Line should still be 1
+    lexer.skip_comment(); // Should skip the multi-line comment
+    ASSERT_EQ(lexer.line_, 2); // Line should still be 1
+    lexer.skip_whitespace(); // Skip any whitespace after the comment
+    ASSERT_EQ(lexer.line_, 2); // Line should still be 1
+    ASSERT_EQ(lexer.peek(), '{'); // Next character should be '{'
+    ASSERT_EQ(lexer.column_, 24); // Column should be at the start of '{
+    ASSERT_EQ(lexer.line_, 2); // Line should be 2 after the comment
+    ASSERT_EQ(lexer.pos_, 48); // Position should be at the start of '{
+}
+
+TEST_F(LexerTest, SkipCommentAtEnd)
+{
+    lexer.source_ = "int main() { return 0; } // End comment";
+    lexer.pos_ = 0; // Reset position to start
+    lexer.column_ = 1; // Reset column to 1
+    lexer.line_ = 1; // Reset line to 1
+    while (lexer.peek() != '/') // Advance to the start of the comment
+        lexer.advance();
+    lexer.skip_comment(); // Should skip the comment at the end
+    ASSERT_EQ(lexer.peek(), '\0'); // Next character should be null at end of input
+    ASSERT_EQ(lexer.column_, 40); // Column should be 1
+    ASSERT_EQ(lexer.line_, 1); // Line should still be 1
+    ASSERT_EQ(lexer.pos_, lexer.source_.size()); // Position should be at the end
 }
