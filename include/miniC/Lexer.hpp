@@ -107,12 +107,6 @@ private:
      */
     Token make_token(TokenType type, const std::variant<int, std::string>& value = {}) const;
 
-    /**
-     * @brief Ensures indentation consistency (no mixing of tabs and spaces).
-     * @param c The current indentation character.
-     */
-    void check_indent_consistency(char c);
-
     friend class PublicLexer; // For testing purposes
 };
 

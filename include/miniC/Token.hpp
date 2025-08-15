@@ -84,8 +84,8 @@ struct Token
 {
     TokenType type;
     std::variant<int, std::string> value; // Holds int literal or string (for identifiers/keywords)
-    size_t line;
-    size_t column;
+    size_t line; // Line number in the source code
+    size_t column; // Column number in the source code
 };
 
 }
