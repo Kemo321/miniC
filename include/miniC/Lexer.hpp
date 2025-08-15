@@ -71,7 +71,7 @@ private:
     void skip_whitespace();
 
     /**
-     * @brief Skips comments, including single-line (//) and multi-line (/* ...).
+     * @brief Skips comments, including single-line (//) and multi-line
      */
     void skip_comment();
 
@@ -112,6 +112,8 @@ private:
      * @param c The current indentation character.
      */
     void check_indent_consistency(char c);
+
+    friend class PublicLexer; // For testing purposes
 };
 
 } // namespace minic
