@@ -25,7 +25,7 @@ std::vector<minic::Token> Lexer::Lex()
             break; // Stop processing at end of file
         if (token.type == TokenType::INDENT || token.type == TokenType::DEDENT)
         {
-            tokens.push_back(Token{TokenType::NEWLINE, {}, line_ - 1, column_ - 1});
+            tokens.push_back(Token { TokenType::NEWLINE, {}, line_ - 1, column_ - 1 });
         }
         tokens.push_back(token);
     }
@@ -110,90 +110,92 @@ Token Lexer::next_token()
     // Handle single-character tokens
     switch (current)
     {
-        case '(':
+    case '(':
+    {
+        Token t = make_token(TokenType::LPAREN);
+        advance();
+        return t;
+    }
+    case ')':
+    {
+        Token t = make_token(TokenType::RPAREN);
+        advance();
+        return t;
+    }
+    case '\n':
+    {
+        Token token = handle_indentation();
+        return token; // Handle indentation and newlines
+    }
+    case ' ':
+    case '\t':
+    case '\r':
+        advance();
+        return next_token();
+    case '+':
+    {
+        Token t = make_token(TokenType::OP_PLUS);
+        advance();
+        return t;
+    }
+    case '-':
+    {
+        Token t = make_token(TokenType::OP_MINUS);
+        advance();
+        return t;
+    }
+    case '*':
+    {
+        Token t = make_token(TokenType::OP_MULTIPLY);
+        advance();
+        return t;
+    }
+    case '/':
+    {
+        Token t = make_token(TokenType::OP_DIVIDE);
+        advance();
+        return t;
+    }
+    case '<':
+    {
+        Token t = make_token(TokenType::OP_LESS);
+        advance();
+        return t;
+    }
+    case '>':
+    {
+        Token t = make_token(TokenType::OP_GREATER);
+        advance();
+        return t;
+    }
+    case ':':
+    {
+        Token t = make_token(TokenType::COLON);
+        advance();
+        return t;
+    }
+    case ',':
+    {
+        Token t = make_token(TokenType::COMMA);
+        advance();
+        return t;
+    }
+    case '=':
+        if (pos_ + 1 < source_.size() && source_[pos_ + 1] == '=')
         {
-            Token t = make_token(TokenType::LPAREN);
+            Token t = make_token(TokenType::OP_EQUAL);
+            advance();
             advance();
             return t;
         }
-        case ')':
+        else
         {
-            Token t = make_token(TokenType::RPAREN);
+            Token t = make_token(TokenType::OP_ASSIGN);
             advance();
             return t;
         }
-        case '\n':
-        {
-            Token token = handle_indentation();
-            return token; // Handle indentation and newlines
-        }
-        case ' ': case '\t': case '\r':
-            advance();
-            return next_token();
-        case '+':
-        {
-            Token t = make_token(TokenType::OP_PLUS);
-            advance();
-            return t;
-        }
-        case '-':
-        {
-            Token t = make_token(TokenType::OP_MINUS);
-            advance();
-            return t;
-        }
-        case '*':
-        {
-            Token t = make_token(TokenType::OP_MULTIPLY);
-            advance();
-            return t;
-        }
-        case '/':
-        {
-            Token t = make_token(TokenType::OP_DIVIDE);
-            advance();
-            return t;
-        }
-        case '<':
-        {
-            Token t = make_token(TokenType::OP_LESS);
-            advance();
-            return t;
-        }
-        case '>':
-        {
-            Token t = make_token(TokenType::OP_GREATER);
-            advance();
-            return t;
-        }
-        case ':':
-        {
-            Token t = make_token(TokenType::COLON);
-            advance();
-            return t;
-        }
-        case ',':
-        {
-            Token t = make_token(TokenType::COMMA);
-            advance();
-            return t;
-        }
-        case '=':
-            if (pos_ + 1 < source_.size() && source_[pos_ + 1] == '=')
-            {
-                Token t = make_token(TokenType::OP_EQUAL);
-                advance();
-                advance();
-                return t;
-            }
-            else
-            {
-                Token t = make_token(TokenType::OP_ASSIGN);
-                advance();
-                return t;
-            }
-        default:
-            throw std::runtime_error("Unexpected character: " + std::string(1, current));
+    default:
+        throw std::runtime_error("Unexpected character: " + std::string(1, current));
     }
 }
 
