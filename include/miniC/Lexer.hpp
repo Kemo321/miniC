@@ -38,12 +38,20 @@ private:
     size_t line_ = 1;
     size_t column_ = 1;
     std::stack<size_t> indent_levels_; // Track indentation levels (in spaces)
+    std::vector<minic::Token> tokens; // Store tokens
+    std::deque<minic::Token> pending_dedents; // Queue for pending
 
     /**
      * @brief Returns the current character without advancing the position.
      * @return The current character in the source.
      */
     char peek() const;
+
+    /**
+     * @brief Returns the next character without advancing the position.
+     * @return The next character in the source.
+     */
+    char peek_next() const;
 
     /**
      * @brief Consumes and returns the current character, advancing the position.

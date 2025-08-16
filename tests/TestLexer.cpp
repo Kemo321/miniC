@@ -345,24 +345,25 @@ TEST_F(LexerTest, LexWithIndentation)
     lexer.line_ = 1;
 
     std::vector<minic::Token> tokens = lexer.Lex();
-    ASSERT_EQ(tokens.size(), 10); // if, (, true, ), INDENT, return, 0, DEDENT, if, END_OF_FILE
+    ASSERT_EQ(tokens.size(), 11); // if, (, true, ), INDENT, return, 0, DEDENT, if, END_OF_FILE
 
     ASSERT_EQ(tokens[0].type, minic::TokenType::KEYWORD_IF);
     ASSERT_EQ(tokens[1].type, minic::TokenType::LPAREN);
     ASSERT_EQ(tokens[2].type, minic::TokenType::IDENTIFIER);
     ASSERT_EQ(std::get<std::string>(tokens[2].value), "true");
     ASSERT_EQ(tokens[3].type, minic::TokenType::RPAREN);
-    ASSERT_EQ(tokens[4].type, minic::TokenType::INDENT);
+    ASSERT_EQ(tokens[4].type, minic::TokenType::NEWLINE);
+    ASSERT_EQ(tokens[5].type, minic::TokenType::INDENT);
 
-    ASSERT_EQ(tokens[5].type, minic::TokenType::KEYWORD_RETURN);
+    ASSERT_EQ(tokens[6].type, minic::TokenType::KEYWORD_RETURN);
 
-    ASSERT_EQ(tokens[6].type, minic::TokenType::LITERAL_INT);
+    ASSERT_EQ(tokens[7].type, minic::TokenType::LITERAL_INT);
     ASSERT_EQ(std::get<int>(tokens[6].value), 0);
 
-    ASSERT_EQ(tokens[7].type, minic::TokenType::NEWLINE);
+    ASSERT_EQ(tokens[8].type, minic::TokenType::NEWLINE);
 
-    ASSERT_EQ(tokens[8].type, minic::TokenType::KEYWORD_IF);
-    ASSERT_EQ(tokens[9].type, minic::TokenType::END_OF_FILE);
+    ASSERT_EQ(tokens[9].type, minic::TokenType::KEYWORD_IF);
+    ASSERT_EQ(tokens[10].type, minic::TokenType::END_OF_FILE);
 }
 
 TEST_F(LexerTest, LexWithMixedIndentation)
@@ -373,4 +374,95 @@ TEST_F(LexerTest, LexWithMixedIndentation)
     lexer.line_ = 1;
 
     EXPECT_THROW(lexer.Lex(), std::runtime_error); // Should throw due to mixed tabs and spaces
+}
+
+TEST_F(LexerTest, ScanIntegerLiteral)
+{
+    lexer.source_ = "abcde 12345 abc";
+    lexer.pos_ = 6;
+    lexer.column_ = 7;
+    minic::Token token = lexer.scan_number();
+    ASSERT_EQ(token.type, minic::TokenType::LITERAL_INT);
+    ASSERT_EQ(std::get<int>(token.value), 12345);
+    ASSERT_EQ(token.line, 1);
+    ASSERT_EQ(token.column, 7);
+}
+
+TEST_F(LexerTest, ScanIdentifierKeywordIf)
+{
+    lexer.source_ = "if";
+    lexer.pos_ = 0;
+    lexer.column_ = 1;
+    minic::Token token = lexer.scan_identifier();
+    ASSERT_EQ(token.type, minic::TokenType::KEYWORD_IF);
+    ASSERT_EQ(token.line, 1);
+    ASSERT_EQ(token.column, 1);
+}
+
+TEST_F(LexerTest, NextTokenHandlesBrackets)
+{
+    lexer.source_ = "( )";
+    lexer.pos_ = 0;
+    lexer.column_ = 1;
+    lexer.line_ = 1;
+
+    std::vector<minic::TokenType> expected = {
+        minic::TokenType::LPAREN, minic::TokenType::RPAREN,
+        minic::TokenType::END_OF_FILE
+    };
+
+    for (size_t i = 0; i < expected.size(); ++i)
+    {
+        minic::Token token = lexer.next_token();
+        ASSERT_EQ(token.type, expected[i]);
+    }
+}
+
+TEST_F(LexerTest, LexHandlesSingleLine)
+{
+    lexer.source_ = "string name = \"John\"";
+    lexer.pos_ = 0;
+    lexer.column_ = 1;
+    lexer.line_ = 1;
+
+    std::vector<minic::Token> tokens = lexer.Lex();
+    ASSERT_EQ(tokens.size(), 5); // string, name, =, "John", ;, NEWLINE, END_OF_FILE
+
+    ASSERT_EQ(tokens[0].type, minic::TokenType::KEYWORD_STR);
+    ASSERT_EQ(tokens[1].type, minic::TokenType::IDENTIFIER);
+    ASSERT_EQ(tokens[3].type, minic::TokenType::LITERAL_STRING);
+    ASSERT_EQ(std::get<std::string>(tokens[3].value), "John");
+    ASSERT_EQ(tokens[2].type, minic::TokenType::OP_ASSIGN);
+    ASSERT_EQ(tokens[4].type, minic::TokenType::END_OF_FILE);
+}
+
+TEST_F(LexerTest, FullCode)
+{
+    lexer.source_ = "int main()\n    if (true)\n        return 0\n    \n\n";
+    lexer.pos_ = 0;
+    lexer.column_ = 1;
+    lexer.line_ = 1;
+
+    std::vector<minic::Token> tokens = lexer.Lex();
+    ASSERT_EQ(tokens.size(), 17); // int, main, (, ), {, IND
+    ASSERT_EQ(tokens[0].type, minic::TokenType::KEYWORD_INT);
+    ASSERT_EQ(tokens[1].type, minic::TokenType::IDENTIFIER);
+    ASSERT_EQ(std::get<std::string>(tokens[1].value), "main");
+    ASSERT_EQ(tokens[2].type, minic::TokenType::LPAREN);
+    ASSERT_EQ(tokens[3].type, minic::TokenType::RPAREN);
+    ASSERT_EQ(tokens[4].type, minic::TokenType::NEWLINE);
+    ASSERT_EQ(tokens[5].type, minic::TokenType::INDENT);
+    ASSERT_EQ(tokens[6].type, minic::TokenType::KEYWORD_IF);
+    ASSERT_EQ(tokens[7].type, minic::TokenType::LPAREN);
+    ASSERT_EQ(tokens[8].type, minic::TokenType::IDENTIFIER);
+    ASSERT_EQ(std::get<std::string>(tokens[8].value), "true");
+    ASSERT_EQ(tokens[9].type, minic::TokenType::RPAREN);
+    ASSERT_EQ(tokens[10].type, minic::TokenType::NEWLINE);
+    ASSERT_EQ(tokens[11].type, minic::TokenType::INDENT);
+    ASSERT_EQ(tokens[12].type, minic::TokenType::KEYWORD_RETURN);
+    ASSERT_EQ(tokens[13].type, minic::TokenType::LITERAL_INT);
+    ASSERT_EQ(std::get<int>(tokens[13].value), 0);
+    ASSERT_EQ(tokens[14].type, minic::TokenType::NEWLINE);
+    ASSERT_EQ(tokens[15].type, minic::TokenType::NEWLINE);
+    ASSERT_EQ(tokens[16].type, minic::TokenType::END_OF_FILE);
 }
