@@ -23,7 +23,8 @@ enum class TokenType
 {
     // Keywords
     KEYWORD_INT,
-    KEYWORD_VOID,
+    KEYWORD_VOID, // Added for function return types
+    KEYWORD_STR, // Added for string type
     KEYWORD_IF,
     KEYWORD_ELSE,
     KEYWORD_WHILE,

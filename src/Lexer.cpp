@@ -23,6 +23,10 @@ std::vector<minic::Token> Lexer::Lex()
         Token token = next_token();
         if (token.type == TokenType::END_OF_FILE)
             break; // Stop processing at end of file
+        if (token.type == TokenType::INDENT || token.type == TokenType::DEDENT)
+        {
+            tokens.push_back(Token{TokenType::NEWLINE, {}, line_ - 1, column_ - 1});
+        }
         tokens.push_back(token);
     }
     // Add an end of file token
@@ -35,6 +39,16 @@ char Lexer::peek() const
     if (pos_ < source_.size())
     {
         return source_[pos_];
+    }
+    // Return null character if at end of input
+    return '\0';
+}
+
+char Lexer::peek_next() const
+{
+    if (pos_ + 1 < source_.size())
+    {
+        return source_[pos_ + 1];
     }
     // Return null character if at end of input
     return '\0';
@@ -68,123 +82,118 @@ Token Lexer::next_token()
 {
     skip_whitespace();
     if (is_at_end())
-    {
         return make_token(TokenType::END_OF_FILE);
-    }
+
     char current = peek();
-    if (current == '/' && pos_ + 1 < source_.size() && source_[pos_ + 1] == '/') // Single-line comment
+
+    // Handle comments
+    if (current == '/' && pos_ + 1 < source_.size())
     {
-        skip_comment();
-        return next_token();
-    }
-    else if (current == '/' && pos_ + 1 < source_.size() && source_[pos_ + 1] == '*') // Multi-line comment
-    {
-        skip_comment();
-        return next_token();
-    }
-    else if (std::isdigit(current)) // Number literal
-    {
-        return scan_number();
-    }
-    else if (std::isalpha(current) || current == '_') // Identifier or keyword
-    {
-        return scan_identifier();
-    }
-    else if (current == '"') // String literal
-    {
-        return scan_string();
-    }
-    else if (current == '(') // Left parenthesis
-    {
-        Token token = make_token(TokenType::LPAREN);
-        advance(); // Skip '('
-        return token;
-    }
-    else if (current == ')') // Right parenthesis
-    {
-        Token token = make_token(TokenType::RPAREN);
-        advance(); // Skip ')'
-        return token;
-    }
-    else if (current == '\n') // Newline
-    {
-        Token token = handle_indentation();
-        // handle_indentation now consumes the newline(s) and prepares any pending DEDENTs
-        return token;
-    }
-    else if (current == ' ' || current == '\t' || current == '\r') // Whitespace
-    {
-        advance(); // Skip whitespace characters
-        return next_token();
-    }
-    else
-    {
-        switch (current)
+        char next = source_[pos_ + 1];
+        if (next == '/' || next == '*')
         {
+            skip_comment();
+            return next_token();
+        }
+    }
+
+    // Handle literals and identifiers
+    if (std::isdigit(current))
+        return scan_number();
+
+    if (std::isalpha(current) || current == '_')
+        return scan_identifier();
+
+    if (current == '"')
+        return scan_string();
+
+    // Handle single-character tokens
+    switch (current)
+    {
+        case '(':
+        {
+            Token t = make_token(TokenType::LPAREN);
+            advance();
+            return t;
+        }
+        case ')':
+        {
+            Token t = make_token(TokenType::RPAREN);
+            advance();
+            return t;
+        }
+        case '\n':
+        {
+            Token token = handle_indentation();
+            return token; // Handle indentation and newlines
+        }
+        case ' ': case '\t': case '\r':
+            advance();
+            return next_token();
         case '+':
         {
-            Token token = make_token(TokenType::OP_PLUS);
+            Token t = make_token(TokenType::OP_PLUS);
             advance();
-            return token;
+            return t;
         }
         case '-':
         {
-            Token token = make_token(TokenType::OP_MINUS);
+            Token t = make_token(TokenType::OP_MINUS);
             advance();
-            return token;
+            return t;
         }
         case '*':
         {
-            Token token = make_token(TokenType::OP_MULTIPLY);
+            Token t = make_token(TokenType::OP_MULTIPLY);
             advance();
-            return token;
+            return t;
         }
         case '/':
         {
-            Token token = make_token(TokenType::OP_DIVIDE);
+            Token t = make_token(TokenType::OP_DIVIDE);
             advance();
-            return token;
-        }
-        case '=':
-        {
-            if (peek() == '=' && pos_ + 1 < source_.size() && source_[pos_ + 1] == '=')
-            {
-                Token token = make_token(TokenType::OP_EQUAL);
-                advance(); // Skip second '='
-                advance(); // Skip first '='
-                return token;
-            }
-            Token token = make_token(TokenType::OP_ASSIGN);
-            advance();
-            return token;
+            return t;
         }
         case '<':
         {
-            Token token = make_token(TokenType::OP_LESS);
+            Token t = make_token(TokenType::OP_LESS);
             advance();
-            return token;
+            return t;
         }
         case '>':
         {
-            Token token = make_token(TokenType::OP_GREATER);
+            Token t = make_token(TokenType::OP_GREATER);
             advance();
-            return token;
+            return t;
         }
         case ':':
         {
-            Token token = make_token(TokenType::COLON);
+            Token t = make_token(TokenType::COLON);
             advance();
-            return token;
+            return t;
         }
         case ',':
         {
-            Token token = make_token(TokenType::COMMA);
+            Token t = make_token(TokenType::COMMA);
             advance();
-            return token;
+            return t;
         }
+        case '=':
+            if (pos_ + 1 < source_.size() && source_[pos_ + 1] == '=')
+            {
+                Token t = make_token(TokenType::OP_EQUAL);
+                advance();
+                advance();
+                return t;
+            }
+            else
+            {
+                Token t = make_token(TokenType::OP_ASSIGN);
+                advance();
+                return t;
+            }
         default:
             throw std::runtime_error("Unexpected character: " + std::string(1, current));
-        }
     }
 }
 
@@ -246,6 +255,8 @@ Token Lexer::scan_identifier()
         type = TokenType::KEYWORD_WHILE;
     else if (identifier == "return")
         type = TokenType::KEYWORD_RETURN;
+    else if (identifier == "string")
+        type = TokenType::KEYWORD_STR;
 
     if (type == TokenType::IDENTIFIER)
     {
