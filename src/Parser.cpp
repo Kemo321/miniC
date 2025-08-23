@@ -21,17 +21,25 @@ std::unique_ptr<Program> Parser::parse()
 
 bool Parser::is_at_end() const
 {
-    return current_ >= tokens_.size() || tokens_[current_].type == TokenType::END_OF_FILE;
+    if (!tokens_.empty())
+    {
+        return current_ >= tokens_.size() || tokens_[current_].type == TokenType::END_OF_FILE;
+    }
+    return true;
 }
 
 const Token& Parser::peek() const
 {
-    return tokens_[current_];
+    if (!is_at_end())
+        return tokens_[current_];
+    throw std::runtime_error("No current token");
 }
 
 const Token& Parser::previous() const
 {
-    return tokens_[current_ - 1];
+    if (current_ > 0)
+        return tokens_[current_ - 1];
+    throw std::runtime_error("No previous token");
 }
 
 const Token& Parser::advance()
@@ -131,13 +139,11 @@ std::unique_ptr<Stmt> Parser::parse_if_statement()
 {
     consume(TokenType::KEYWORD_IF, "Expected 'if'");
     auto condition = parse_expression();
-    consume(TokenType::LBRACE, "Expected '{' after if condition");
     auto then_branch = parse_block();
     std::vector<std::unique_ptr<Stmt>> else_branch;
     if (check(TokenType::KEYWORD_ELSE))
     {
         advance();
-        consume(TokenType::LBRACE, "Expected '{' after else");
         else_branch = parse_block();
     }
     return std::make_unique<IfStmt>(std::move(condition), std::move(then_branch), std::move(else_branch));
@@ -147,7 +153,6 @@ std::unique_ptr<Stmt> Parser::parse_while_statement()
 {
     consume(TokenType::KEYWORD_WHILE, "Expected 'while'");
     auto condition = parse_expression();
-    consume(TokenType::LBRACE, "Expected '{' after while condition");
     auto body = parse_block();
     return std::make_unique<WhileStmt>(std::move(condition), std::move(body));
 }
@@ -192,7 +197,19 @@ std::vector<Parameter> Parser::parse_parameters()
     {
         do
         {
-            Token type = consume(TokenType::KEYWORD_INT, "Expected 'int' or 'void' for parameter type");
+            Token type;
+            if (check(TokenType::KEYWORD_INT))
+            {
+                type = consume(TokenType::KEYWORD_INT, "Expected 'int' or 'void' for parameter type");
+            }
+            else if (check(TokenType::KEYWORD_VOID))
+            {
+                type = consume(TokenType::KEYWORD_VOID, "Expected 'int' or 'void' for parameter type");
+            }
+            else
+            {
+                throw std::runtime_error("Expected 'int' or 'void' for parameter type");
+            }
             Token name = consume(TokenType::IDENTIFIER, "Expected parameter name");
             params.emplace_back(type.type, std::get<std::string>(name.value));
         } while (check(TokenType::COMMA) && (advance(), true));
@@ -202,12 +219,24 @@ std::vector<Parameter> Parser::parse_parameters()
 
 std::unique_ptr<Function> Parser::parse_function()
 {
-    Token type = consume(TokenType::KEYWORD_INT, "Expected 'int' or 'void'");
+    Token type;
+    if (check(TokenType::KEYWORD_INT))
+    {
+        type = consume(TokenType::KEYWORD_INT, "Expected 'int' or 'void'");
+    }
+    else if (check(TokenType::KEYWORD_VOID))
+    {
+        type = consume(TokenType::KEYWORD_VOID, "Expected 'int' or 'void'");
+    }
+    else
+    {
+        throw std::runtime_error("Expected 'int' or 'void' for function return type at line " + std::to_string(peek().line) + ", column " + std::to_string(peek().column));
+    }
+
     Token name = consume(TokenType::IDENTIFIER, "Expected function name");
     consume(TokenType::LPAREN, "Expected '('");
     auto parameters = parse_parameters();
     consume(TokenType::RPAREN, "Expected ')'");
-    consume(TokenType::LBRACE, "Expected '{'");
     auto body = parse_block();
     return std::make_unique<Function>(std::get<std::string>(name.value), type.type, std::move(parameters), std::move(body));
 }
