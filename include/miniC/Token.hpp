@@ -17,7 +17,7 @@ namespace minic
  * @brief Enumerates all possible token types in the miniC language.
  *
  * This includes keywords, identifiers, literals, operators, punctuation,
- * indentation/line control, and special tokens.
+ * block delimiters, and special tokens.
  */
 enum class TokenType
 {
@@ -44,6 +44,7 @@ enum class TokenType
     OP_DIVIDE, // /
     OP_ASSIGN, // =
     OP_EQUAL, // ==
+    OP_NOT, // !
     OP_NOT_EQUAL, // !=
     OP_LESS, // <
     OP_GREATER, // >
@@ -53,12 +54,13 @@ enum class TokenType
     // Punctuation
     LPAREN, // (
     RPAREN, // )
+    LBRACE, // {
+    RBRACE, // }
     COLON, // :
     COMMA, // ,
+    SEMICOLON, // ;
 
-    // Indentation and Line Control
-    INDENT, // Start of a new block
-    DEDENT, // End of a block
+    // Line Control
     NEWLINE, // Line break to separate statements
 
     // Special
@@ -89,6 +91,6 @@ struct Token
     size_t column; // Column number in the source code
 };
 
-}
+} // namespace minic
 
 #endif // MINI_C_TOKEN_HPP

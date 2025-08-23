@@ -1,7 +1,7 @@
 #ifndef MINI_C_LEXER_HPP
 #define MINI_C_LEXER_HPP
+
 #include "Token.hpp"
-#include <stack>
 #include <vector>
 
 /**
@@ -10,12 +10,13 @@
  */
 namespace minic
 {
+
 /**
  * @class Lexer
  * @brief Tokenizes miniC source code into a sequence of tokens.
  *
  * The Lexer class reads a string containing miniC source code and produces a vector of Token objects.
- * It supports handling of indentation, comments, identifiers, numbers, strings, and enforces indentation consistency.
+ * It supports handling of braces `{}`, comments, identifiers, numbers, and strings.
  */
 class Lexer
 {
@@ -37,9 +38,7 @@ private:
     size_t pos_ = 0;
     size_t line_ = 1;
     size_t column_ = 1;
-    std::stack<size_t> indent_levels_; // Track indentation levels (in spaces)
     std::vector<minic::Token> tokens; // Store tokens
-    std::deque<minic::Token> pending_dedents; // Queue for pending
 
     /**
      * @brief Returns the current character without advancing the position.
@@ -72,7 +71,7 @@ private:
     Token next_token();
 
     /**
-     * @brief Skips whitespace characters that are not indentation.
+     * @brief Skips whitespace characters (but not newlines).
      */
     void skip_whitespace();
 
@@ -100,12 +99,6 @@ private:
     Token scan_string();
 
     /**
-     * @brief Processes indentation at the start of a line and returns an indentation token.
-     * @return The indentation Token object.
-     */
-    Token handle_indentation();
-
-    /**
      * @brief Creates a Token object of the specified type and value.
      * @param type The type of token.
      * @param value The value of the token (optional).
@@ -118,4 +111,4 @@ private:
 
 } // namespace minic
 
-#endif // MINI_C_TOKEN_HPP
+#endif // MINI_C_LEXER_HPP

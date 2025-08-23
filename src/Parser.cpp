@@ -131,15 +131,13 @@ std::unique_ptr<Stmt> Parser::parse_if_statement()
 {
     consume(TokenType::KEYWORD_IF, "Expected 'if'");
     auto condition = parse_expression();
-    consume(TokenType::COLON, "Expected ':' after if condition");
-    consume(TokenType::NEWLINE, "Expected newline after ':'");
+    consume(TokenType::LBRACE, "Expected '{' after if condition");
     auto then_branch = parse_block();
     std::vector<std::unique_ptr<Stmt>> else_branch;
     if (check(TokenType::KEYWORD_ELSE))
     {
         advance();
-        consume(TokenType::COLON, "Expected ':' after else");
-        consume(TokenType::NEWLINE, "Expected newline after ':'");
+        consume(TokenType::LBRACE, "Expected '{' after else");
         else_branch = parse_block();
     }
     return std::make_unique<IfStmt>(std::move(condition), std::move(then_branch), std::move(else_branch));
@@ -149,8 +147,7 @@ std::unique_ptr<Stmt> Parser::parse_while_statement()
 {
     consume(TokenType::KEYWORD_WHILE, "Expected 'while'");
     auto condition = parse_expression();
-    consume(TokenType::COLON, "Expected ':' after while condition");
-    consume(TokenType::NEWLINE, "Expected newline after ':'");
+    consume(TokenType::LBRACE, "Expected '{' after while condition");
     auto body = parse_block();
     return std::make_unique<WhileStmt>(std::move(condition), std::move(body));
 }
@@ -159,11 +156,11 @@ std::unique_ptr<Stmt> Parser::parse_return_statement()
 {
     consume(TokenType::KEYWORD_RETURN, "Expected 'return'");
     std::unique_ptr<Expr> value = nullptr;
-    if (!check(TokenType::NEWLINE) && !check(TokenType::DEDENT))
+    if (!check(TokenType::SEMICOLON))
     {
         value = parse_expression();
     }
-    consume(TokenType::NEWLINE, "Expected newline after return");
+    consume(TokenType::SEMICOLON, "Expected ';' after return");
     return std::make_unique<ReturnStmt>(std::move(value));
 }
 
@@ -172,24 +169,19 @@ std::unique_ptr<Stmt> Parser::parse_assign_statement()
     Token name = consume(TokenType::IDENTIFIER, "Expected identifier");
     consume(TokenType::OP_ASSIGN, "Expected '='");
     auto value = parse_expression();
-    consume(TokenType::NEWLINE, "Expected newline after assignment");
+    consume(TokenType::SEMICOLON, "Expected ';' after assignment");
     return std::make_unique<AssignStmt>(std::get<std::string>(name.value), std::move(value));
 }
 
 std::vector<std::unique_ptr<Stmt>> Parser::parse_block()
 {
     std::vector<std::unique_ptr<Stmt>> statements;
-    consume(TokenType::INDENT, "Expected indent");
-    while (!check(TokenType::DEDENT) && !is_at_end())
+    consume(TokenType::LBRACE, "Expected '{'");
+    while (!check(TokenType::RBRACE) && !is_at_end())
     {
-        if (check(TokenType::NEWLINE))
-        {
-            advance();
-            continue;
-        }
         statements.push_back(parse_statement());
     }
-    consume(TokenType::DEDENT, "Expected dedent");
+    consume(TokenType::RBRACE, "Expected '}'");
     return statements;
 }
 
@@ -215,8 +207,7 @@ std::unique_ptr<Function> Parser::parse_function()
     consume(TokenType::LPAREN, "Expected '('");
     auto parameters = parse_parameters();
     consume(TokenType::RPAREN, "Expected ')'");
-    consume(TokenType::COLON, "Expected ':'");
-    consume(TokenType::NEWLINE, "Expected newline after ':'");
+    consume(TokenType::LBRACE, "Expected '{'");
     auto body = parse_block();
     return std::make_unique<Function>(std::get<std::string>(name.value), type.type, std::move(parameters), std::move(body));
 }
@@ -225,7 +216,7 @@ void Parser::synchronize()
 {
     while (!is_at_end())
     {
-        if (check(TokenType::NEWLINE) || check(TokenType::DEDENT))
+        if (check(TokenType::SEMICOLON))
         {
             advance();
             break;

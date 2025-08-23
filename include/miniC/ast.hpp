@@ -154,7 +154,7 @@ public:
  */
 struct Parameter
 {
-    TokenType type; ///< Parameter type (e.g., KEYWORD_INT, KEYWORD_BOOL)
+    TokenType type; ///< Parameter type (e.g., KEYWORD_INT, KEYWORD_VOID)
     std::string name; ///< Parameter name
     Parameter(TokenType t, const std::string& n)
         : type(t)

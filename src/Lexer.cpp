@@ -1,5 +1,4 @@
 #include "miniC/Lexer.hpp"
-#include <deque> // added for pending dedent queue
 #include <iostream>
 #include <stdexcept>
 
@@ -12,7 +11,7 @@ Lexer::Lexer(const std::string& source)
     , line_(1)
     , column_(1)
 {
-    indent_levels_.push(0); // Start with an initial indentation level of 0
+    // nothing to do here for now
 }
 
 std::vector<minic::Token> Lexer::Lex()
@@ -23,10 +22,6 @@ std::vector<minic::Token> Lexer::Lex()
         Token token = next_token();
         if (token.type == TokenType::END_OF_FILE)
             break; // Stop processing at end of file
-        if (token.type == TokenType::INDENT || token.type == TokenType::DEDENT)
-        {
-            tokens.push_back(Token { TokenType::NEWLINE, {}, line_ - 1, column_ - 1 });
-        }
         tokens.push_back(token);
     }
     // Add an end of file token
@@ -110,6 +105,24 @@ Token Lexer::next_token()
     // Handle single-character tokens
     switch (current)
     {
+    case '{':
+    {
+        Token t = make_token(TokenType::LBRACE);
+        advance();
+        return t;
+    }
+    case '}':
+    {
+        Token t = make_token(TokenType::RBRACE);
+        advance();
+        return t;
+    }
+    case ';':
+    {
+        Token t = make_token(TokenType::SEMICOLON);
+        advance();
+        return t;
+    }
     case '(':
     {
         Token t = make_token(TokenType::LPAREN);
@@ -124,8 +137,9 @@ Token Lexer::next_token()
     }
     case '\n':
     {
-        Token token = handle_indentation();
-        return token; // Handle indentation and newlines
+        Token t = make_token(TokenType::NEWLINE);
+        advance();
+        return t;
     }
     case ' ':
     case '\t':
@@ -158,15 +172,35 @@ Token Lexer::next_token()
     }
     case '<':
     {
-        Token t = make_token(TokenType::OP_LESS);
-        advance();
-        return t;
+        if (peek_next() == '=')
+        {
+            Token t = make_token(TokenType::OP_LESS_EQ);
+            advance();
+            advance();
+            return t;
+        }
+        else
+        {
+            Token t = make_token(TokenType::OP_LESS);
+            advance();
+            return t;
+        }
     }
     case '>':
     {
-        Token t = make_token(TokenType::OP_GREATER);
-        advance();
-        return t;
+        if (peek_next() == '=')
+        {
+            Token t = make_token(TokenType::OP_GREATER_EQ);
+            advance();
+            advance();
+            return t;
+        }
+        else
+        {
+            Token t = make_token(TokenType::OP_GREATER);
+            advance();
+            return t;
+        }
     }
     case ':':
     {
@@ -179,6 +213,22 @@ Token Lexer::next_token()
         Token t = make_token(TokenType::COMMA);
         advance();
         return t;
+    }
+    case '!':
+    {
+        if (peek_next() == '=')
+        {
+            Token t = make_token(TokenType::OP_NOT_EQUAL);
+            advance();
+            advance();
+            return t;
+        }
+        else
+        {
+            Token t = make_token(TokenType::OP_NOT);
+            advance();
+            return t;
+        }
     }
     case '=':
         if (pos_ + 1 < source_.size() && source_[pos_ + 1] == '=')
@@ -273,7 +323,7 @@ Token Lexer::scan_number()
 {
     std::string num;
     Token token = make_token(TokenType::LITERAL_INT);
-    while (!is_at_end() && std::isdigit(peek()))
+    while (!is_at_end() && std::isdigit(static_cast<unsigned char>(peek())))
     {
         num += advance();
     }
@@ -291,112 +341,79 @@ Token Lexer::scan_number()
 Token Lexer::scan_string()
 {
     std::string str;
-    advance(); // Skip opening quote
+
+    // Capture start position (position of the opening quote)
+    int start_line = line_;
+    int start_column = column_;
+
+    // Skip opening quote (this will advance column_ / pos_)
+    advance();
+
+    // Create token and set its start position explicitly so it points to the opening quote.
     Token token = make_token(TokenType::LITERAL_STRING);
-    while (!is_at_end() && peek() != '"')
-    {
-        str += advance();
-    }
-    if (!is_at_end())
-    {
-        advance(); // Skip closing quote
-        token.value = str;
-        return token;
-    }
-    // Handle error: unclosed string literal
-    throw std::runtime_error("Unclosed string literal at line " + std::to_string(line_) + ", column " + std::to_string(column_));
-}
+    token.line = start_line;
+    token.column = start_column;
 
-Token Lexer::handle_indentation()
-{
-    // A small FIFO to hold extra DEDENT tokens so they can be returned across
-    // repeated calls to next_token().
-    static std::deque<Token> pending_dedents;
-
-    // If we already prepared dedents from a previous newline, emit them first.
-    if (!pending_dedents.empty())
-    {
-        Token t = pending_dedents.front();
-        pending_dedents.pop_front();
-        return t;
-    }
-
-    // We expect to be called when peek() == '\n'. Consume that newline(s).
-    // Consume a single newline (the one that triggered calling this function)
-    if (peek() == '\n')
-    {
-        advance(); // increments line_ and resets column_
-    }
-
-    // Skip any additional consecutive newline characters (blank lines).
-    // For blank lines we do not produce INDENT/DEDENT—return a single NEWLINE.
-    while (peek() == '\n' && !is_at_end())
-    {
-        advance();
-    }
-
-    // Now count indentation (spaces/tabs) at the start of the next non-blank line.
-    const int TAB_WIDTH = 4;
-    size_t indent = 0;
-    bool has_tab = false, has_space = false;
-    while (!is_at_end() && (peek() == ' ' || peek() == '\t'))
+    while (!is_at_end())
     {
         char c = advance();
-        if (c == '\t')
-            has_tab = true;
-        if (c == ' ')
-            has_space = true;
-        if (has_tab && has_space)
+
+        // Closing quote -> finish
+        if (c == '"')
         {
-            throw std::runtime_error("Mixed tabs and spaces at line " + std::to_string(line_) + ", column " + std::to_string(column_ - 1));
+            token.value = str;
+            return token;
         }
-        if (c == ' ')
-            indent += 1;
-        else if (c == '\t')
-            indent += TAB_WIDTH;
-    }
 
-    // If we reached EOF or the next line is blank (immediately another newline),
-    // just return a NEWLINE token — nothing to change in indentation levels.
-    if (is_at_end() || peek() == '\n')
-    {
-        return make_token(TokenType::NEWLINE, "");
-    }
-
-    // Compare with current indentation level
-    if (indent_levels_.empty())
-    {
-        throw std::runtime_error("Internal lexer error: empty indent stack");
-    }
-    size_t current_indent = indent_levels_.top();
-
-    if (indent > current_indent)
-    {
-        // Increased indentation -> push and emit INDENT
-        indent_levels_.push(indent);
-        return make_token(TokenType::INDENT, "");
-    }
-    else if (indent < current_indent)
-    {
-        // Decreased indentation -> pop until we reach the matching indentation level.
-        // Emit one DEDENT now and enqueue remaining DEDENTs (if any).
-        while (!indent_levels_.empty() && indent < indent_levels_.top())
+        // Handle escape sequences: consume the next raw source char(s), decode into str,
+        if (c == '\\')
         {
-            indent_levels_.pop();
-            pending_dedents.push_back(make_token(TokenType::DEDENT, ""));
+            if (is_at_end())
+            {
+                throw std::runtime_error("Unterminated escape sequence starting at line " + std::to_string(start_line) + ", column " + std::to_string(start_column));
+            }
+
+            char esc = advance(); // consumes the escape char in the source
+
+            switch (esc)
+            {
+            case 'n':
+                str.push_back('\n');
+                break;
+            case 't':
+                str.push_back('\t');
+                break;
+            case 'r':
+                str.push_back('\r');
+                break;
+            case 'b':
+                str.push_back('\b');
+                break;
+            case '"':
+                str.push_back('"');
+                break;
+            case '\\':
+                str.push_back('\\');
+                break;
+            default:
+                // Report the position of the escape char. column_ currently points after it,
+                // so column_-1 is where the esc char sits in source coordinates.
+                {
+                    int col_pos = static_cast<int>(column_) - 1;
+                    if (col_pos < 1)
+                        col_pos = 1;
+                    throw std::runtime_error(std::string("Unknown escape sequence \\") + esc + " at line " + std::to_string(line_) + ", column " + std::to_string(col_pos));
+                }
+            }
         }
-        if (indent_levels_.empty() || indent != indent_levels_.top())
+        else
         {
-            throw std::runtime_error("Invalid dedent at line " + std::to_string(line_) + ", column " + std::to_string(column_));
+            str.push_back(c);
         }
-        // Pop front and return the first DEDENT (the rest remain in pending_dedents).
-        Token t = pending_dedents.front();
-        pending_dedents.pop_front();
-        return t;
     }
 
-    // Same indentation level -> just return NEWLINE token
-    return make_token(TokenType::NEWLINE, "");
+    // If we fell out, the closing quote was missing
+    throw std::runtime_error("Unclosed string literal starting at line " + std::to_string(start_line) + ", column " + std::to_string(start_column));
 }
 
 Token Lexer::make_token(TokenType type, const std::variant<int, std::string>& value) const
