@@ -130,6 +130,10 @@ std::unique_ptr<Stmt> Parser::parse_statement()
         return parse_while_statement();
     if (check(TokenType::KEYWORD_RETURN))
         return parse_return_statement();
+    if (check(TokenType::KEYWORD_INT) || check(TokenType::KEYWORD_VOID) || check(TokenType::KEYWORD_STR))
+    {
+        return parse_var_decl_statement();
+    }
     if (check(TokenType::IDENTIFIER))
         return parse_assign_statement();
     throw std::runtime_error("Expected statement at line " + std::to_string(peek().line) + ", column " + std::to_string(peek().column));
@@ -138,7 +142,11 @@ std::unique_ptr<Stmt> Parser::parse_statement()
 std::unique_ptr<Stmt> Parser::parse_if_statement()
 {
     consume(TokenType::KEYWORD_IF, "Expected 'if'");
+    if (check(TokenType::LPAREN))
+        advance();
     auto condition = parse_expression();
+    if (check(TokenType::RPAREN))
+        advance();
     auto then_branch = parse_block();
     std::vector<std::unique_ptr<Stmt>> else_branch;
     if (check(TokenType::KEYWORD_ELSE))
@@ -178,15 +186,41 @@ std::unique_ptr<Stmt> Parser::parse_assign_statement()
     return std::make_unique<AssignStmt>(std::get<std::string>(name.value), std::move(value));
 }
 
+std::unique_ptr<Stmt> Parser::parse_var_decl_statement()
+{
+    Token type = advance();
+    if (type.type != TokenType::KEYWORD_INT && type.type != TokenType::KEYWORD_VOID && type.type != TokenType::KEYWORD_STR)
+    {
+        throw std::runtime_error("Expected type (int, void, string) at line " + std::to_string(type.line));
+    }
+    Token name = consume(TokenType::IDENTIFIER, "Expected variable name");
+    std::unique_ptr<Expr> initializer = nullptr;
+    if (check(TokenType::OP_ASSIGN))
+    {
+        advance();
+        initializer = parse_expression();
+    }
+    consume(TokenType::SEMICOLON, "Expected ';' after declaration");
+    return std::make_unique<VarDeclStmt>(type.type, std::get<std::string>(name.value), std::move(initializer));
+}
+
 std::vector<std::unique_ptr<Stmt>> Parser::parse_block()
 {
     std::vector<std::unique_ptr<Stmt>> statements;
     consume(TokenType::LBRACE, "Expected '{'");
+    while (check(TokenType::NEWLINE))
+        advance(); // Skip newlines
     while (!check(TokenType::RBRACE) && !is_at_end())
     {
         statements.push_back(parse_statement());
+        while (check(TokenType::NEWLINE))
+            advance();
     }
+    while (check(TokenType::NEWLINE))
+        advance();
     consume(TokenType::RBRACE, "Expected '}'");
+    while ((check(TokenType::NEWLINE)))
+        advance();
     return statements;
 }
 

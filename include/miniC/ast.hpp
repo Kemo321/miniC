@@ -2,8 +2,6 @@
 #define MINIC_AST_HPP
 #include "miniC/Lexer.hpp"
 #include <memory>
-#include <string>
-#include <vector>
 
 namespace minic
 {
@@ -145,6 +143,23 @@ public:
     AssignStmt(const std::string& n, std::unique_ptr<Expr> v)
         : name(n)
         , value(std::move(v))
+    {
+    }
+};
+
+/**
+ * @brief Variable declaration statement.
+ */
+class VarDeclStmt : public Stmt
+{
+public:
+    TokenType type;
+    std::string name;
+    std::unique_ptr<Expr> initializer; // Optional init
+    VarDeclStmt(TokenType t, const std::string& n, std::unique_ptr<Expr> init = nullptr)
+        : type(t)
+        , name(n)
+        , initializer(std::move(init))
     {
     }
 };
