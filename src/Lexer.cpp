@@ -1,4 +1,4 @@
-#include "miniC/Lexer.hpp"
+#include "minic/Lexer.hpp"
 #include <iostream>
 #include <stdexcept>
 

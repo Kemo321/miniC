@@ -1,4 +1,4 @@
-#include "miniC/Parser.hpp"
+#include "minic/Parser.hpp"
 #include <gtest/gtest.h>
 
 namespace minic

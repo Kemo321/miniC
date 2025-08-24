@@ -1,6 +1,6 @@
 #ifndef MINIC_AST_HPP
 #define MINIC_AST_HPP
-#include "miniC/Lexer.hpp"
+#include "Lexer.hpp"
 #include <memory>
 
 namespace minic

@@ -1,4 +1,4 @@
-#include "Lexer.hpp"
+#include "minic/Lexer.hpp"
 #include <gtest/gtest.h>
 
 namespace minic

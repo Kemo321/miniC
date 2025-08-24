@@ -1,4 +1,4 @@
-#include "miniC/Parser.hpp"
+#include "minic/Parser.hpp"
 #include <stdexcept>
 
 namespace minic

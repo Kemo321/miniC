@@ -1,5 +1,5 @@
 #pragma once
-#include "miniC/ast.hpp"
+#include "AST.hpp"
 
 /**
  * @namespace minic

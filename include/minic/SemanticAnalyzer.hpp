@@ -1,8 +1,8 @@
 #ifndef MINIC_SEMANTIC_ANALYZER_HPP
 #define MINIC_SEMANTIC_ANALYZER_HPP
 
+#include "AST.hpp"
 #include "ASTVisitor.hpp"
-#include "ast.hpp"
 #include <map>
 #include <stdexcept>
 #include <string>

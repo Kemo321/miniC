@@ -1,4 +1,4 @@
-#include "ast.hpp"
+#include "minic/AST.hpp"
 #include <gtest/gtest.h>
 
 using namespace minic;

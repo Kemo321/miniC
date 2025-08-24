@@ -1,4 +1,4 @@
-#include "miniC/SemanticAnalyzer.hpp"
+#include "minic/SemanticAnalyzer.hpp"
 
 namespace minic
 {

@@ -1,5 +1,5 @@
-#include "miniC/Parser.hpp" // For parsing full programs in some tests
-#include "miniC/SemanticAnalyzer.hpp"
+#include "minic/Parser.hpp"
+#include "minic/SemanticAnalyzer.hpp"
 #include <gtest/gtest.h>
 
 namespace minic

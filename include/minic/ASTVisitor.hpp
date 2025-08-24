@@ -1,6 +1,6 @@
 #ifndef MINIC_AST_VISITOR_HPP
 #define MINIC_AST_VISITOR_HPP
-#include "miniC/ast.hpp"
+#include "AST.hpp"
 
 /**
  * @namespace minic
