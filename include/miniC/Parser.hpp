@@ -1,7 +1,5 @@
 #pragma once
 #include "miniC/ast.hpp"
-#include <memory>
-#include <vector>
 
 /**
  * @namespace minic
@@ -143,6 +141,12 @@ private:
      * @return A unique_ptr to the parsed Stmt node representing the assignment.
      */
     std::unique_ptr<Stmt> parse_assign_statement();
+
+    /**
+     * @brief Parses a variable declaration statement.
+     * @return A unique_ptr to the parsed Stmt node representing the variable declaration.
+     */
+    std::unique_ptr<Stmt> parse_var_decl_statement();
 
     /**
      * @brief Parses a block of statements enclosed in braces.

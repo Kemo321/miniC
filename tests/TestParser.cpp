@@ -526,3 +526,19 @@ TEST_F(ParserTest, ParseProgramWithError)
         MakeToken(minic::TokenType::LBRACE) };
     EXPECT_THROW(parser_.parse(), std::runtime_error); // Missing }
 }
+
+TEST_F(ParserTest, ParseFullProgram)
+{
+    std::string source = "int main() {\n"
+                         "    int x = 5;\n"
+                         "    x = x + 1;\n"
+                         "    if (x > 0) {\n"
+                         "        return x;\n"
+                         "    } else {\n"
+                         "        return 0;\n"
+                         "    }\n"
+                         "}";
+    minic::Lexer lexer(source);
+    tokens_ = lexer.Lex();
+    EXPECT_NO_THROW(parser_.parse());
+}
