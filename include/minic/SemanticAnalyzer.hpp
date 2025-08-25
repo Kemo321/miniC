@@ -1,11 +1,12 @@
 #ifndef MINIC_SEMANTIC_ANALYZER_HPP
 #define MINIC_SEMANTIC_ANALYZER_HPP
 
-#include "AST.hpp"
 #include "ASTVisitor.hpp"
-#include <map>
+#include "minic/AST.hpp"
+#include <stack>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 
 /**
  * @namespace minic
@@ -14,6 +15,19 @@
  */
 namespace minic
 {
+
+/**
+ * @class SemanticError
+ * @brief Custom exception for semantic errors, allowing for better error reporting.
+ */
+class SemanticError : public std::runtime_error
+{
+public:
+    explicit SemanticError(const std::string& message)
+        : std::runtime_error(message)
+    {
+    }
+};
 
 /**
  * @class SemanticAnalyzer
@@ -46,7 +60,7 @@ public:
      *
      * Cleans up any analyzer resources. Override is provided to satisfy polymorphic base class behavior.
      */
-    ~SemanticAnalyzer();
+    ~SemanticAnalyzer() override;
 
     /**
      * @brief Visits the Program AST node and performs top-level semantic checks.
@@ -88,38 +102,56 @@ public:
     void visit(const Expr& expr) override;
 
 private:
+    using SymbolTable = std::unordered_map<std::string, TokenType>; ///< Maps variable names to their TokenType.
+
+    std::stack<SymbolTable> scopes_; ///< Stack of symbol tables for nested scopes.
+    std::unordered_map<std::string, TokenType> functions_; ///< Global function table (name to return type).
+
+    TokenType current_function_type_ = TokenType::KEYWORD_VOID; ///< Track current function's return type.
+
     /**
-     * @struct SymbolTable
-     * @brief Simple mapping of variable names to their token/type information for the current scope.
-     *
-     * This table supports basic operations required by the analyzer:
-     *  - Checking whether an identifier is declared.
-     *  - Retrieving the type associated with a declared identifier.
-     *
-     * Note: get_type throws std::runtime_error if a lookup fails; callers should handle or translate
-     * such errors into user-facing diagnostics as appropriate.
+     * @brief Pushes a new scope onto the stack.
      */
-    struct SymbolTable
-    {
-        std::map<std::string, TokenType> variables; ///< Maps variable names to their TokenType.
+    void push_scope();
 
-        /**
-         * @brief Determines whether a variable name is present in the table.
-         * @param name The variable identifier to check.
-         * @return True if declared in this table, false otherwise.
-         */
-        bool is_declared(const std::string& name) const;
+    /**
+     * @brief Pops the current scope from the stack.
+     */
+    void pop_scope();
 
-        /**
-         * @brief Retrieves the type associated with a variable name.
-         * @param name The variable identifier to look up.
-         * @return The TokenType associated with name.
-         * @throws std::runtime_error if the variable is not found.
-         */
-        TokenType get_type(const std::string& name) const;
-    };
+    /**
+     * @brief Symbol table operations
+     */
+    bool is_declared_in_current_scope(const std::string& name) const;
 
-    SymbolTable current_scope_; ///< The symbol table representing the current (active) scope.
+    /**
+     * @brief Checks if a variable is declared in any scope.
+     * @param name The variable name to check.
+     * @return True if declared, false otherwise.
+     */
+    bool is_declared(const std::string& name) const;
+
+    /**
+     * @brief Gets the type of a variable from the symbol table.
+     * @param name The variable name to look up.
+     * @return The variable's TokenType, or TokenType::UNKNOWN if not found.
+     */
+    TokenType get_type(const std::string& name) const;
+
+    /**
+     * @brief Infers the type of an expression.
+     * @param expr The expression to analyze.
+     * @return The inferred TokenType.
+     */
+    TokenType infer_type(const Expr& expr);
+
+    /**
+     * @brief Validates binary operator compatibility.
+     * @param op The binary operator token.
+     * @param left_type The inferred type of the left operand.
+     * @param right_type The inferred type of the right operand.
+     */
+    void validate_binary_op(TokenType op, TokenType left_type, TokenType right_type);
 };
 
 } // namespace minic

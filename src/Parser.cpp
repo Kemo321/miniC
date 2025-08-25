@@ -207,6 +207,8 @@ std::unique_ptr<Stmt> Parser::parse_var_decl_statement()
 std::vector<std::unique_ptr<Stmt>> Parser::parse_block()
 {
     std::vector<std::unique_ptr<Stmt>> statements;
+    while (check(TokenType::NEWLINE))
+        advance(); // Skip newlines
     consume(TokenType::LBRACE, "Expected '{'");
     while (check(TokenType::NEWLINE))
         advance(); // Skip newlines

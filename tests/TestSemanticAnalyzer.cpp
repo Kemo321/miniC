@@ -67,7 +67,7 @@ TEST_F(SemanticAnalyzerTest, UndeclaredAssign)
     funcs.push_back(minic::BuildFunction("main", minic::TokenType::KEYWORD_INT, {}, std::move(body)));
 
     auto program = minic::BuildSimpleProgram(std::move(funcs));
-    EXPECT_THROW(analyzer_.visit(*program), std::runtime_error);
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
 }
 
 TEST_F(SemanticAnalyzerTest, RedeclaredVariable)
@@ -82,7 +82,7 @@ TEST_F(SemanticAnalyzerTest, RedeclaredVariable)
     funcs.push_back(minic::BuildFunction("main", minic::TokenType::KEYWORD_INT, {}, std::move(body)));
 
     auto program = minic::BuildSimpleProgram(std::move(funcs));
-    EXPECT_THROW(analyzer_.visit(*program), std::runtime_error);
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
 }
 
 TEST_F(SemanticAnalyzerTest, RedeclaredParameter)
@@ -95,7 +95,7 @@ TEST_F(SemanticAnalyzerTest, RedeclaredParameter)
     funcs.push_back(minic::BuildFunction("func", minic::TokenType::KEYWORD_VOID, std::move(params), {}));
 
     auto program = minic::BuildSimpleProgram(std::move(funcs));
-    EXPECT_THROW(analyzer_.visit(*program), std::runtime_error);
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
 }
 
 TEST_F(SemanticAnalyzerTest, ValidIfStatement)
@@ -125,8 +125,7 @@ TEST_F(SemanticAnalyzerTest, ValidIfStatement)
 TEST_F(SemanticAnalyzerTest, UndeclaredInIfCondition)
 {
     auto cond = std::make_unique<minic::Identifier>("undeclared");
-    auto if_stmt = std::make_unique<minic::IfStmt>(
-        std::move(cond),
+    auto if_stmt = std::make_unique<minic::IfStmt>(std::move(cond),
         std::vector<std::unique_ptr<minic::Stmt>> {},
         std::vector<std::unique_ptr<minic::Stmt>> {});
 
@@ -137,7 +136,7 @@ TEST_F(SemanticAnalyzerTest, UndeclaredInIfCondition)
     funcs.push_back(minic::BuildFunction("main", minic::TokenType::KEYWORD_INT, {}, std::move(body)));
 
     auto program = minic::BuildSimpleProgram(std::move(funcs));
-    EXPECT_THROW(analyzer_.visit(*program), std::runtime_error);
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
 }
 
 TEST_F(SemanticAnalyzerTest, ValidWhileLoop)
@@ -168,7 +167,7 @@ TEST_F(SemanticAnalyzerTest, ValidWhileLoop)
 
 TEST_F(SemanticAnalyzerTest, UndeclaredInWhileBody)
 {
-    auto cond = std::make_unique<minic::IntLiteral>(1);
+    auto cond = std::make_unique<minic::IntLiteral>(1); // True
     std::vector<std::unique_ptr<minic::Stmt>> loop_body;
     loop_body.push_back(std::make_unique<minic::AssignStmt>("undeclared", std::make_unique<minic::IntLiteral>(0)));
     auto while_stmt = std::make_unique<minic::WhileStmt>(std::move(cond), std::move(loop_body));
@@ -180,7 +179,7 @@ TEST_F(SemanticAnalyzerTest, UndeclaredInWhileBody)
     funcs.push_back(minic::BuildFunction("main", minic::TokenType::KEYWORD_INT, {}, std::move(body)));
 
     auto program = minic::BuildSimpleProgram(std::move(funcs));
-    EXPECT_THROW(analyzer_.visit(*program), std::runtime_error);
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
 }
 
 TEST_F(SemanticAnalyzerTest, ValidReturnLiteral)
@@ -190,7 +189,7 @@ TEST_F(SemanticAnalyzerTest, ValidReturnLiteral)
     body.push_back(std::move(ret));
 
     std::vector<std::unique_ptr<minic::Function>> funcs;
-    funcs.push_back(minic::BuildFunction("func", minic::TokenType::KEYWORD_VOID, {}, std::move(body)));
+    funcs.push_back(minic::BuildFunction("func", minic::TokenType::KEYWORD_STR, {}, std::move(body)));
 
     auto program = minic::BuildSimpleProgram(std::move(funcs));
     EXPECT_NO_THROW(analyzer_.visit(*program));
@@ -206,7 +205,7 @@ TEST_F(SemanticAnalyzerTest, UndeclaredInReturn)
     funcs.push_back(minic::BuildFunction("main", minic::TokenType::KEYWORD_INT, {}, std::move(body)));
 
     auto program = minic::BuildSimpleProgram(std::move(funcs));
-    EXPECT_THROW(analyzer_.visit(*program), std::runtime_error);
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
 }
 
 TEST_F(SemanticAnalyzerTest, ValidParameters)
@@ -228,7 +227,7 @@ TEST_F(SemanticAnalyzerTest, UnknownStmtType)
     {
     }; // Mock unknown
     auto unknown = std::make_unique<UnknownStmt>();
-    EXPECT_THROW(analyzer_.visit(*unknown), std::runtime_error);
+    EXPECT_THROW(analyzer_.visit(*unknown), minic::SemanticError);
 }
 
 TEST_F(SemanticAnalyzerTest, UnknownExprType)
@@ -237,7 +236,7 @@ TEST_F(SemanticAnalyzerTest, UnknownExprType)
     {
     }; // Mock unknown
     auto unknown = std::make_unique<UnknownExpr>();
-    EXPECT_THROW(analyzer_.visit(*unknown), std::runtime_error);
+    EXPECT_THROW(analyzer_.visit(*unknown), minic::SemanticError);
 }
 
 TEST_F(SemanticAnalyzerTest, FullValidProgramViaParser)
@@ -261,23 +260,20 @@ TEST_F(SemanticAnalyzerTest, FullInvalidProgramViaParser)
                          "    x = 5;  // Undeclared\n"
                          "}\n";
     auto program = ParseSource(source);
-    EXPECT_THROW(analyzer_.visit(*program), std::runtime_error);
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
 }
 
 TEST_F(SemanticAnalyzerTest, VoidStringDecl)
 {
     auto decl_void = std::make_unique<minic::VarDeclStmt>(minic::TokenType::KEYWORD_VOID, "v");
-    auto decl_str = std::make_unique<minic::VarDeclStmt>(minic::TokenType::KEYWORD_STR, "s",
-        std::make_unique<minic::StringLiteral>("test"));
     std::vector<std::unique_ptr<minic::Stmt>> body;
     body.push_back(std::move(decl_void));
-    body.push_back(std::move(decl_str));
 
     std::vector<std::unique_ptr<minic::Function>> funcs;
     funcs.push_back(minic::BuildFunction("main", minic::TokenType::KEYWORD_INT, {}, std::move(body)));
 
     auto program = minic::BuildSimpleProgram(std::move(funcs));
-    EXPECT_NO_THROW(analyzer_.visit(*program)); // Passes, as no type rules enforced yet
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError); // Now throws for void var
 }
 
 TEST_F(SemanticAnalyzerTest, EmptyProgram)
@@ -294,4 +290,178 @@ TEST_F(SemanticAnalyzerTest, MultipleFunctions)
 
     auto program = minic::BuildSimpleProgram(std::move(funcs));
     EXPECT_NO_THROW(analyzer_.visit(*program)); // No cross-function checks yet
+}
+
+// New tests for added functionalities
+
+TEST_F(SemanticAnalyzerTest, TypeMismatchDeclInit)
+{
+    auto decl = std::make_unique<minic::VarDeclStmt>(minic::TokenType::KEYWORD_INT, "x",
+        std::make_unique<minic::StringLiteral>("invalid"));
+    std::vector<std::unique_ptr<minic::Stmt>> body;
+    body.push_back(std::move(decl));
+
+    std::vector<std::unique_ptr<minic::Function>> funcs;
+    funcs.push_back(minic::BuildFunction("main", minic::TokenType::KEYWORD_INT, {}, std::move(body)));
+
+    auto program = minic::BuildSimpleProgram(std::move(funcs));
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}
+
+TEST_F(SemanticAnalyzerTest, TypeMismatchAssign)
+{
+    auto decl = std::make_unique<minic::VarDeclStmt>(minic::TokenType::KEYWORD_STR, "s",
+        std::make_unique<minic::StringLiteral>("ok"));
+    auto assign = std::make_unique<minic::AssignStmt>("s", std::make_unique<minic::IntLiteral>(42));
+    std::vector<std::unique_ptr<minic::Stmt>> body;
+    body.push_back(std::move(decl));
+    body.push_back(std::move(assign));
+
+    std::vector<std::unique_ptr<minic::Function>> funcs;
+    funcs.push_back(minic::BuildFunction("main", minic::TokenType::KEYWORD_INT, {}, std::move(body)));
+
+    auto program = minic::BuildSimpleProgram(std::move(funcs));
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}
+
+TEST_F(SemanticAnalyzerTest, ReturnTypeMismatch)
+{
+    auto ret = std::make_unique<minic::ReturnStmt>(std::make_unique<minic::StringLiteral>("mismatch"));
+    std::vector<std::unique_ptr<minic::Stmt>> body;
+    body.push_back(std::move(ret));
+
+    std::vector<std::unique_ptr<minic::Function>> funcs;
+    funcs.push_back(minic::BuildFunction("func", minic::TokenType::KEYWORD_INT, {}, std::move(body)));
+
+    auto program = minic::BuildSimpleProgram(std::move(funcs));
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}
+
+TEST_F(SemanticAnalyzerTest, MissingReturnInNonVoid)
+{
+    auto ret = std::make_unique<minic::ReturnStmt>(nullptr); // Void return
+    std::vector<std::unique_ptr<minic::Stmt>> body;
+    body.push_back(std::move(ret));
+
+    std::vector<std::unique_ptr<minic::Function>> funcs;
+    funcs.push_back(minic::BuildFunction("func", minic::TokenType::KEYWORD_INT, {}, std::move(body)));
+
+    auto program = minic::BuildSimpleProgram(std::move(funcs));
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}
+
+TEST_F(SemanticAnalyzerTest, BinaryOpTypeMismatch)
+{
+    auto decl_int = std::make_unique<minic::VarDeclStmt>(minic::TokenType::KEYWORD_INT, "i", std::make_unique<minic::IntLiteral>(1));
+    auto decl_str = std::make_unique<minic::VarDeclStmt>(minic::TokenType::KEYWORD_STR, "s", std::make_unique<minic::StringLiteral>("str"));
+    auto bin = std::make_unique<minic::BinaryExpr>(std::make_unique<minic::Identifier>("i"),
+        minic::TokenType::OP_PLUS,
+        std::make_unique<minic::Identifier>("s"));
+    auto assign = std::make_unique<minic::AssignStmt>("i", std::move(bin));
+    std::vector<std::unique_ptr<minic::Stmt>> body;
+    body.push_back(std::move(decl_int));
+    body.push_back(std::move(decl_str));
+    body.push_back(std::move(assign));
+
+    std::vector<std::unique_ptr<minic::Function>> funcs;
+    funcs.push_back(minic::BuildFunction("main", minic::TokenType::KEYWORD_INT, {}, std::move(body)));
+
+    auto program = minic::BuildSimpleProgram(std::move(funcs));
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}
+
+TEST_F(SemanticAnalyzerTest, NestedScopeRedeclOK)
+{
+    auto outer_decl = std::make_unique<minic::VarDeclStmt>(minic::TokenType::KEYWORD_INT, "x", std::make_unique<minic::IntLiteral>(1));
+    auto cond = std::make_unique<minic::IntLiteral>(1);
+    std::vector<std::unique_ptr<minic::Stmt>> if_body;
+    if_body.push_back(std::make_unique<minic::VarDeclStmt>(minic::TokenType::KEYWORD_INT, "x", std::make_unique<minic::IntLiteral>(2))); // Shadow OK
+    if_body.push_back(std::make_unique<minic::AssignStmt>("x", std::make_unique<minic::IntLiteral>(3)));
+    auto if_stmt = std::make_unique<minic::IfStmt>(std::move(cond), std::move(if_body), std::vector<std::unique_ptr<minic::Stmt>> {});
+    auto outer_assign = std::make_unique<minic::AssignStmt>("x", std::make_unique<minic::IntLiteral>(4));
+
+    std::vector<std::unique_ptr<minic::Stmt>> body;
+    body.push_back(std::move(outer_decl));
+    body.push_back(std::move(if_stmt));
+    body.push_back(std::move(outer_assign));
+
+    std::vector<std::unique_ptr<minic::Function>> funcs;
+    funcs.push_back(minic::BuildFunction("main", minic::TokenType::KEYWORD_INT, {}, std::move(body)));
+
+    auto program = minic::BuildSimpleProgram(std::move(funcs));
+    EXPECT_NO_THROW(analyzer_.visit(*program));
+}
+
+TEST_F(SemanticAnalyzerTest, NestedScopeUndeclaredInner)
+{
+    auto cond = std::make_unique<minic::IntLiteral>(1);
+    std::vector<std::unique_ptr<minic::Stmt>> if_body;
+    if_body.push_back(std::make_unique<minic::AssignStmt>("inner_undeclared", std::make_unique<minic::IntLiteral>(1)));
+    auto if_stmt = std::make_unique<minic::IfStmt>(std::move(cond), std::move(if_body), std::vector<std::unique_ptr<minic::Stmt>> {});
+
+    std::vector<std::unique_ptr<minic::Stmt>> body;
+    body.push_back(std::move(if_stmt));
+
+    std::vector<std::unique_ptr<minic::Function>> funcs;
+    funcs.push_back(minic::BuildFunction("main", minic::TokenType::KEYWORD_INT, {}, std::move(body)));
+
+    auto program = minic::BuildSimpleProgram(std::move(funcs));
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}
+
+TEST_F(SemanticAnalyzerTest, FunctionRedefinition)
+{
+    std::vector<std::unique_ptr<minic::Function>> funcs;
+    funcs.push_back(minic::BuildFunction("dup", minic::TokenType::KEYWORD_INT, {}, {}));
+    funcs.push_back(minic::BuildFunction("dup", minic::TokenType::KEYWORD_VOID, {}, {}));
+
+    auto program = minic::BuildSimpleProgram(std::move(funcs));
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}
+
+TEST_F(SemanticAnalyzerTest, IfConditionTypeMismatch)
+{
+    auto cond = std::make_unique<minic::StringLiteral>("not_int");
+    auto if_stmt = std::make_unique<minic::IfStmt>(std::move(cond), std::vector<std::unique_ptr<minic::Stmt>> {}, std::vector<std::unique_ptr<minic::Stmt>> {});
+
+    std::vector<std::unique_ptr<minic::Stmt>> body;
+    body.push_back(std::move(if_stmt));
+
+    std::vector<std::unique_ptr<minic::Function>> funcs;
+    funcs.push_back(minic::BuildFunction("main", minic::TokenType::KEYWORD_INT, {}, std::move(body)));
+
+    auto program = minic::BuildSimpleProgram(std::move(funcs));
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}
+
+TEST_F(SemanticAnalyzerTest, WhileConditionTypeMismatch)
+{
+    auto cond = std::make_unique<minic::StringLiteral>("not_int");
+    auto while_stmt = std::make_unique<minic::WhileStmt>(std::move(cond), std::vector<std::unique_ptr<minic::Stmt>> {});
+
+    std::vector<std::unique_ptr<minic::Stmt>> body;
+    body.push_back(std::move(while_stmt));
+
+    std::vector<std::unique_ptr<minic::Function>> funcs;
+    funcs.push_back(minic::BuildFunction("main", minic::TokenType::KEYWORD_INT, {}, std::move(body)));
+
+    auto program = minic::BuildSimpleProgram(std::move(funcs));
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}
+
+TEST_F(SemanticAnalyzerTest, UnsupportedBinaryOp)
+{
+    auto bin = std::make_unique<minic::BinaryExpr>(std::make_unique<minic::IntLiteral>(1),
+        minic::TokenType::OP_ASSIGN, // Invalid op for binary expr
+        std::make_unique<minic::IntLiteral>(2));
+    auto ret = std::make_unique<minic::ReturnStmt>(std::move(bin));
+
+    std::vector<std::unique_ptr<minic::Stmt>> body;
+    body.push_back(std::move(ret));
+
+    std::vector<std::unique_ptr<minic::Function>> funcs;
+    funcs.push_back(minic::BuildFunction("main", minic::TokenType::KEYWORD_INT, {}, std::move(body)));
+
+    auto program = minic::BuildSimpleProgram(std::move(funcs));
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
 }
