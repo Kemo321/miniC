@@ -62,6 +62,25 @@ public:
 };
 
 /**
+ * @brief Unary expression (e.g., logical not or unary minus).
+ */
+class UnaryExpr : public Expr
+{
+public:
+    TokenType op; // OP_NOT for !, OP_MINUS for unary -
+    std::unique_ptr<Expr> operand;
+    UnaryExpr(TokenType o, std::unique_ptr<Expr> oper)
+        : op(o)
+        , operand(std::move(oper))
+    {
+        if (o != TokenType::OP_NOT && o != TokenType::OP_MINUS)
+        {
+            throw std::runtime_error("Invalid unary operator");
+        }
+    }
+};
+
+/**
  * @brief Binary expression (e.g., arithmetic or logical).
  */
 class BinaryExpr : public Expr

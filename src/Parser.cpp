@@ -104,6 +104,23 @@ std::unique_ptr<Expr> Parser::parse_factor()
 
 std::unique_ptr<Expr> Parser::parse_primary()
 {
+    // Parenthesized expression
+    if (check(TokenType::LPAREN))
+    {
+        advance();
+        auto expr = parse_expression();
+        consume(TokenType::RPAREN, "Expected ')' after expression");
+        return expr;
+    }
+
+    // Unary operators: '!' or unary '-'
+    if (check(TokenType::OP_NOT) || check(TokenType::OP_MINUS))
+    {
+        Token op = advance();
+        auto operand = parse_primary(); // unary has high precedence; parse another primary
+        return std::make_unique<UnaryExpr>(op.type, std::move(operand));
+    }
+
     if (check(TokenType::LITERAL_INT))
     {
         Token token = advance();
@@ -160,7 +177,11 @@ std::unique_ptr<Stmt> Parser::parse_if_statement()
 std::unique_ptr<Stmt> Parser::parse_while_statement()
 {
     consume(TokenType::KEYWORD_WHILE, "Expected 'while'");
+    if (check(TokenType::LPAREN))
+        advance();
     auto condition = parse_expression();
+    if (check(TokenType::RPAREN))
+        advance();
     auto body = parse_block();
     return std::make_unique<WhileStmt>(std::move(condition), std::move(body));
 }
@@ -236,15 +257,19 @@ std::vector<Parameter> Parser::parse_parameters()
             Token type;
             if (check(TokenType::KEYWORD_INT))
             {
-                type = consume(TokenType::KEYWORD_INT, "Expected 'int' or 'void' for parameter type");
+                type = consume(TokenType::KEYWORD_INT, "Expected parameter type 'int', 'void' or 'str'");
             }
             else if (check(TokenType::KEYWORD_VOID))
             {
-                type = consume(TokenType::KEYWORD_VOID, "Expected 'int' or 'void' for parameter type");
+                type = consume(TokenType::KEYWORD_VOID, "Expected parameter type 'int', 'void' or 'str'");
+            }
+            else if (check(TokenType::KEYWORD_STR))
+            {
+                type = consume(TokenType::KEYWORD_STR, "Expected parameter type 'int', 'void' or 'str'");
             }
             else
             {
-                throw std::runtime_error("Expected 'int' or 'void' for parameter type");
+                throw std::runtime_error("Expected parameter type 'int', 'void' or 'str' at line " + std::to_string(peek().line));
             }
             Token name = consume(TokenType::IDENTIFIER, "Expected parameter name");
             params.emplace_back(type.type, std::get<std::string>(name.value));
@@ -264,9 +289,13 @@ std::unique_ptr<Function> Parser::parse_function()
     {
         type = consume(TokenType::KEYWORD_VOID, "Expected 'int' or 'void'");
     }
+    else if (check(TokenType::KEYWORD_STR))
+    {
+        type = consume(TokenType::KEYWORD_STR, "Expected 'int', 'void' or 'str'");
+    }
     else
     {
-        throw std::runtime_error("Expected 'int' or 'void' for function return type at line " + std::to_string(peek().line) + ", column " + std::to_string(peek().column));
+        throw std::runtime_error("Expected 'int', 'void' or 'str' for function return type at line " + std::to_string(peek().line) + ", column " + std::to_string(peek().column));
     }
 
     Token name = consume(TokenType::IDENTIFIER, "Expected function name");
