@@ -21,6 +21,8 @@ enum class IROpcode
     SUB,
     MUL,
     DIV, // Arithmetic
+    NEG,
+    NOT,
     EQ,
     NEQ,
     LT,
@@ -32,6 +34,7 @@ enum class IROpcode
     STORE, // Variable access
     JUMP,
     JUMPIF, // Control flow
+    JUMPIFNOT, // Control flow
     RETURN, // Return
     LABEL // Block label
 };
