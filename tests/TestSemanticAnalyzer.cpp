@@ -6,12 +6,12 @@ namespace minic
 {
 
 // Helper to build minimal AST for isolated testing
-std::unique_ptr<Program> BuildSimpleProgram(std::vector<std::unique_ptr<Function>> funcs)
+inline std::unique_ptr<Program> BuildSimpleProgram(std::vector<std::unique_ptr<Function>> funcs)
 {
     return std::make_unique<Program>(std::move(funcs));
 }
 
-std::unique_ptr<Function> BuildFunction(const std::string& name, TokenType ret_type,
+inline std::unique_ptr<Function> BuildFunction(const std::string& name, TokenType ret_type,
     std::vector<Parameter> params,
     std::vector<std::unique_ptr<Stmt>> body)
 {
