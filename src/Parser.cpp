@@ -280,6 +280,9 @@ std::vector<Parameter> Parser::parse_parameters()
 
 std::unique_ptr<Function> Parser::parse_function()
 {
+    while (check(TokenType::NEWLINE))
+        advance(); // Skip newlines
+
     Token type;
     if (check(TokenType::KEYWORD_INT))
     {

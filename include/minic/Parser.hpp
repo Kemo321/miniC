@@ -1,4 +1,6 @@
-#pragma once
+#ifndef MINIC_PARSER_HPP
+#define MINIC_PARSER_HPP
+
 #include "AST.hpp"
 
 /**
@@ -170,3 +172,5 @@ private:
 };
 
 } // namespace minic
+
+#endif // MINIC_PARSER_HPP
