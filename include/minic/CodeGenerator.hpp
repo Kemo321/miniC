@@ -2,12 +2,12 @@
 #define MINIC_CODEGENERATOR_HPP
 
 #include "minic/IRGenerator.hpp"
+#include <iostream>
 #include <ostream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <iostream>
 
 namespace minic
 {
