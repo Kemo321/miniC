@@ -542,3 +542,20 @@ TEST_F(ParserTest, ParseFullProgram)
     tokens_ = lexer.Lex();
     EXPECT_NO_THROW(parser_.parse());
 }
+
+TEST_F(ParserTest, ParseComplexProgram)
+{
+    std::string source = "\n"
+                         "int main() {\n"
+                         "    int x = 5 + 3;\n"
+                         "    if (x > 0) {\n"
+                         "        while (x < 10) {\n"
+                         "            x = x - 1;\n"
+                         "        }\n"
+                         "    }\n"
+                         "    return x;\n"
+                         "}\n";
+    minic::Lexer lexer(source);
+    tokens_ = lexer.Lex();
+    EXPECT_NO_THROW(parser_.parse());
+}

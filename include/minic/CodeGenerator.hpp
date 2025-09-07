@@ -1,112 +1,143 @@
-#ifndef MINIC_CODE_GENERATOR_HPP
-#define MINIC_CODE_GENERATOR_HPP
+#ifndef MINIC_CODEGENERATOR_HPP
+#define MINIC_CODEGENERATOR_HPP
 
-#include "minic/IR.hpp"
-#include <fstream>
-#include <map>
+#include "minic/IRGenerator.hpp"
+#include <ostream>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+#include <iostream>
 
-namespace minic {
-
-/**
- * @namespace minic
- * @brief Contains components for the miniC language, including the CodeGenerator that
- *        emits assembly/text output from the intermediate representation (IR).
- */
+namespace minic
+{
 
 /**
  * @class CodeGenerator
- * @brief Generates target assembly (or textual) output from a miniC IRProgram.
+ * @brief Generate target code (textual assembly) from IRProgram.
  *
- * The CodeGenerator traverses an IRProgram and emits textual output to a file stream.
- * It handles function and block emission, instruction lowering, simple temporary-to-register
- * mapping, and local stack allocation bookkeeping.
+ * CodeGenerator takes an IRProgram produced by the IRGenerator and emits a
+ * textual representation (or writes to a file). It maintains per-function
+ * state such as stack allocation offsets, label mapping and the current
+ * output stream.
  */
-class CodeGenerator {
+class CodeGenerator
+{
 public:
     /**
-     * @brief Generate output for the given IR program into the specified file.
-     * @param ir_program The IR program to generate code for.
-     * @param output_file Path to the output file to write the generated code.
+     * @brief Construct a CodeGenerator with the given output stream.
+     *
+     * The provided stream is used as the default place to emit generated
+     * code. The constructor initializes internal mappings and state.
+     *
+     * @param out Output stream to write generated code to (defaults to std::cout).
      */
-    void generate(const IRProgram& ir_program, const std::string& output_file);
+    explicit CodeGenerator(std::ostream& out = std::cout);
+
+    /**
+     * @brief Generate code for the given IR program.
+     *
+     * Traverses the IRProgram and emits code for each function and block.
+     * Optionally writes the result to an output file if output_file is not empty.
+     *
+     * @param ir_program IR representation to generate code from.
+     * @param output_file Optional path to write the emitted code into.
+     */
+    void generate(const IRProgram& ir_program, const std::string& output_file = "");
 
 private:
     /**
-     * @brief Output stream used to write generated code.
-     */
-    std::ofstream out_;
-
-    /**
-     * @brief Mapping from miniC token types (used for declarations) to target directives.
+     * @brief Emit the entire program (all functions and global data).
      *
-     * For example, integer types may map to a data allocation directive ("dq" for 64-bit).
-     * TokenType values come from the IR/Token definitions.
-     */
-    std::map<TokenType, std::string> type_map_ = {
-        {TokenType::KEYWORD_INT, "dq"},  // 64-bit int
-        {TokenType::KEYWORD_VOID, ""}    // No allocation
-    };
-
-    /**
-     * @brief Current stack offset (in bytes) used when allocating locals.
+     * Called by generate() to handle program-level emission.
      *
-     * This is a running total used to compute per-variable offsets on the stack.
-     */
-    int stack_offset_ = 0;  // Track stack for locals
-
-    /**
-     * @brief Maps variable names to their stack offsets (negative offsets relative to base/frame).
-     */
-    std::map<std::string, int> var_offsets_;  // Var to stack offset
-
-    /**
-     * @brief Emit an entire IR program (top-level traversal).
-     * @param program The IRProgram to emit.
+     * @param program IRProgram to emit.
      */
     void emit_program(const IRProgram& program);
 
     /**
-     * @brief Emit code for a single function IR node.
-     * @param func The IRFunction to emit.
+     * @brief Emit a single IRFunction.
      *
-     * Responsible for function prologue/epilogue, stack allocation, and emitting blocks.
+     * Outputs function prologue/epilogue and emits its basic blocks.
+     *
+     * @param func Function IR to emit.
      */
     void emit_function(const IRFunction& func);
 
     /**
-     * @brief Emit code for a basic block.
-     * @param block The BasicBlock to emit.
+     * @brief Emit a basic block.
      *
-     * Handles block labels and emits contained instructions in order.
+     * Writes the block label (if needed) and emits contained instructions in order.
+     *
+     * @param block BasicBlock to emit.
      */
     void emit_block(const BasicBlock& block);
 
     /**
-     * @brief Lower a single IR instruction to target output.
-     * @param instr The IRInstruction to lower/emit.
+     * @brief Emit a single IR instruction.
+     *
+     * Translates an IRInstruction into one or more target assembly/text lines
+     * and writes them to the output stream.
+     *
+     * @param instr Instruction to emit.
      */
     void emit_instruction(const IRInstruction& instr);
 
     /**
-     * @brief Map a temporary name (SSA/temp) to a target register or spill location string.
-     * @param temp The temporary identifier from IR.
-     * @return A string representing the register or memory operand to use in emitted code.
+     * @brief Allocate stack space for function-local variables.
      *
-     * This provides a simple mapping for temps to textual registers or stack locations.
-     */
-    std::string reg_for_temp(const std::string& temp);
-
-    /**
-     * @brief Allocate stack space for locals used by a function and populate var_offsets_.
-     * @param func The function whose locals are being allocated.
+     * Computes offsets for locals, updates stack_offset_ and var_offsets_
+     * so subsequent instructions refer to correct stack locations.
      *
-     * Computes stack_offset_ and var_offsets_ to be used when emitting instructions that
-     * reference local variables.
+     * @param func Function whose stack frame to allocate.
      */
     void allocate_stack(const IRFunction& func);
+
+    /**
+     * @brief Get the textual location for a variable name.
+     *
+     * Returns a string describing where the named variable is stored
+     * (e.g., a stack reference or register name) based on current offsets.
+     *
+     * @param name Variable name or temporary.
+     * @return Textual location used in emitted code.
+     */
+    std::string get_loc(const std::string& name);
+
+    /**
+     * @brief Find a label that contains the provided substring.
+     *
+     * Useful for heuristics when mapping control-flow targets back to labels.
+     *
+     * @param substr Substring to search for inside known labels.
+     * @return Matching label name, or empty string if none found.
+     */
+    std::string find_label_with_substr(const std::string& substr) const;
+
+    /**
+     * @brief Infer the branch target label for the current block.
+     *
+     * Uses block ordering and label maps to determine the most reasonable
+     * fall-through or explicit target for branches emitted from the current block.
+     *
+     * @return Inferred label name for the current block's primary target.
+     */
+    std::string infer_target_label_for_current_block() const;
+
+    std::ostream* out_; ///< Output stream used for emitted code.
+    std::unordered_map<TokenType, std::string> type_map_; ///< Mapping IR types to textual types.
+    std::string current_function_; ///< Name of the function currently being emitted.
+    std::string current_block_label_; ///< Label of the current basic block.
+    int stack_offset_; ///< Current stack offset for locals within the active function.
+    std::unordered_map<std::string, int> var_offsets_; ///< Map from variable name to stack offset.
+    std::vector<std::string> block_labels_; ///< Ordered list of block labels for the current function.
+    std::unordered_map<std::string, size_t> block_index_; ///< Mapping block label -> index in block_labels_.
+    std::unordered_set<std::string> labels_; ///< Set of labels already emitted/known.
+    std::string last_written_loc_; ///< Last emitted location string (to avoid redundant moves).
+
+    friend class PublicCodeGenerator;
 };
 
 } // namespace minic
 
-#endif // MINIC_CODE_GENERATOR_HPP
+#endif // MINIC_CODEGENERATOR_HPP
