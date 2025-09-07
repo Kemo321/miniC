@@ -82,7 +82,7 @@ void IRGenerator::visit(const Stmt& stmt)
         std::string else_label = new_label("if_else");
         std::string end_label = new_label("if_end");
 
-        emit(IROpcode::JUMPIFNOT, cond_temp, else_label); // Jump if false
+        emit(IROpcode::JUMPIFNOT, "", cond_temp, else_label);
 
         // Then branch
         auto then_block = std::make_unique<BasicBlock>(then_label);
@@ -90,7 +90,7 @@ void IRGenerator::visit(const Stmt& stmt)
         current_function_->blocks.push_back(std::move(then_block));
         for (const auto& s : if_stmt->then_branch)
             visit(*s);
-        emit(IROpcode::JUMP, end_label);
+        emit(IROpcode::JUMP, "", end_label);
 
         // Else branch
         auto else_block = std::make_unique<BasicBlock>(else_label);
@@ -98,7 +98,7 @@ void IRGenerator::visit(const Stmt& stmt)
         current_function_->blocks.push_back(std::move(else_block));
         for (const auto& s : if_stmt->else_branch)
             visit(*s);
-        emit(IROpcode::JUMP, end_label);
+        emit(IROpcode::JUMP, "", end_label);
 
         // End
         auto end_block = std::make_unique<BasicBlock>(end_label);
@@ -118,7 +118,7 @@ void IRGenerator::visit(const Stmt& stmt)
         current_block_ = cond_block.get();
         current_function_->blocks.push_back(std::move(cond_block));
         std::string cond_temp = generate_expr(*while_stmt->condition);
-        emit(IROpcode::JUMPIFNOT, cond_temp, end_label); // Jump if false
+        emit(IROpcode::JUMPIFNOT, "", cond_temp, end_label); // Jump if false
 
         // Body block
         auto body_block = std::make_unique<BasicBlock>(body_label);

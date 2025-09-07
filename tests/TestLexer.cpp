@@ -564,3 +564,107 @@ TEST_F(LexerTest, AnotherComplexProgram)
     ASSERT_EQ(tokens[41].type, minic::TokenType::RBRACE);
     ASSERT_EQ(tokens[42].type, minic::TokenType::END_OF_FILE);
 }
+
+TEST_F(LexerTest, ComplexProgram3)
+{
+    std::string source = "\n"
+                         "int main() {\n"
+                         "    int x = 5 + 3;\n"
+                         "    if (x > 0) {\n"
+                         "        while (x < 10) {\n"
+                         "            x = x - 1;\n"
+                         "        }\n"
+                         "    }\n"
+                         "    return x;\n"
+                         "}\n";
+
+    lexer.source_ = source;
+    lexer.pos_ = 0;
+    lexer.column_ = 1;
+    lexer.line_ = 1;
+
+    std::vector<minic::Token> tokens = lexer.Lex();
+
+    // Total tokens: leading NEWLINE, int, main, (, ), {, NEWLINE,
+    // int, x, =, 5, +, 3, ;, NEWLINE,
+    // if, (, x, >, 0, ), {, NEWLINE,
+    // while, (, x, <, 10, ), {, NEWLINE,
+    // x, =, x, -, 1, ;, NEWLINE,
+    // }, NEWLINE,
+    // }, NEWLINE,
+    // return, x, ;, NEWLINE,
+    // }, NEWLINE, EOF
+    ASSERT_EQ(tokens.size(), 49);
+
+    ASSERT_EQ(tokens[0].type, minic::TokenType::NEWLINE);
+
+    ASSERT_EQ(tokens[1].type, minic::TokenType::KEYWORD_INT);
+    ASSERT_EQ(tokens[2].type, minic::TokenType::IDENTIFIER);
+    ASSERT_EQ(std::get<std::string>(tokens[2].value), "main");
+    ASSERT_EQ(tokens[3].type, minic::TokenType::LPAREN);
+    ASSERT_EQ(tokens[4].type, minic::TokenType::RPAREN);
+    ASSERT_EQ(tokens[5].type, minic::TokenType::LBRACE);
+    ASSERT_EQ(tokens[6].type, minic::TokenType::NEWLINE);
+
+    ASSERT_EQ(tokens[7].type, minic::TokenType::KEYWORD_INT);
+    ASSERT_EQ(tokens[8].type, minic::TokenType::IDENTIFIER);
+    ASSERT_EQ(std::get<std::string>(tokens[8].value), "x");
+    ASSERT_EQ(tokens[9].type, minic::TokenType::OP_ASSIGN);
+    ASSERT_EQ(tokens[10].type, minic::TokenType::LITERAL_INT);
+    ASSERT_EQ(std::get<int>(tokens[10].value), 5);
+    ASSERT_EQ(tokens[11].type, minic::TokenType::OP_PLUS);
+    ASSERT_EQ(tokens[12].type, minic::TokenType::LITERAL_INT);
+    ASSERT_EQ(std::get<int>(tokens[12].value), 3);
+    ASSERT_EQ(tokens[13].type, minic::TokenType::SEMICOLON);
+    ASSERT_EQ(tokens[14].type, minic::TokenType::NEWLINE);
+
+    ASSERT_EQ(tokens[15].type, minic::TokenType::KEYWORD_IF);
+    ASSERT_EQ(tokens[16].type, minic::TokenType::LPAREN);
+    ASSERT_EQ(tokens[17].type, minic::TokenType::IDENTIFIER);
+    ASSERT_EQ(std::get<std::string>(tokens[17].value), "x");
+    ASSERT_EQ(tokens[18].type, minic::TokenType::OP_GREATER);
+    ASSERT_EQ(tokens[19].type, minic::TokenType::LITERAL_INT);
+    ASSERT_EQ(std::get<int>(tokens[19].value), 0);
+    ASSERT_EQ(tokens[20].type, minic::TokenType::RPAREN);
+    ASSERT_EQ(tokens[21].type, minic::TokenType::LBRACE);
+    ASSERT_EQ(tokens[22].type, minic::TokenType::NEWLINE);
+
+    ASSERT_EQ(tokens[23].type, minic::TokenType::KEYWORD_WHILE);
+    ASSERT_EQ(tokens[24].type, minic::TokenType::LPAREN);
+    ASSERT_EQ(tokens[25].type, minic::TokenType::IDENTIFIER);
+    ASSERT_EQ(std::get<std::string>(tokens[25].value), "x");
+    ASSERT_EQ(tokens[26].type, minic::TokenType::OP_LESS);
+    ASSERT_EQ(tokens[27].type, minic::TokenType::LITERAL_INT);
+    ASSERT_EQ(std::get<int>(tokens[27].value), 10);
+    ASSERT_EQ(tokens[28].type, minic::TokenType::RPAREN);
+    ASSERT_EQ(tokens[29].type, minic::TokenType::LBRACE);
+    ASSERT_EQ(tokens[30].type, minic::TokenType::NEWLINE);
+
+    ASSERT_EQ(tokens[31].type, minic::TokenType::IDENTIFIER);
+    ASSERT_EQ(std::get<std::string>(tokens[31].value), "x");
+    ASSERT_EQ(tokens[32].type, minic::TokenType::OP_ASSIGN);
+    ASSERT_EQ(tokens[33].type, minic::TokenType::IDENTIFIER);
+    ASSERT_EQ(std::get<std::string>(tokens[33].value), "x");
+    ASSERT_EQ(tokens[34].type, minic::TokenType::OP_MINUS);
+    ASSERT_EQ(tokens[35].type, minic::TokenType::LITERAL_INT);
+    ASSERT_EQ(std::get<int>(tokens[35].value), 1);
+    ASSERT_EQ(tokens[36].type, minic::TokenType::SEMICOLON);
+    ASSERT_EQ(tokens[37].type, minic::TokenType::NEWLINE);
+
+    ASSERT_EQ(tokens[38].type, minic::TokenType::RBRACE);
+    ASSERT_EQ(tokens[39].type, minic::TokenType::NEWLINE);
+
+    ASSERT_EQ(tokens[40].type, minic::TokenType::RBRACE);
+    ASSERT_EQ(tokens[41].type, minic::TokenType::NEWLINE);
+
+    ASSERT_EQ(tokens[42].type, minic::TokenType::KEYWORD_RETURN);
+    ASSERT_EQ(tokens[43].type, minic::TokenType::IDENTIFIER);
+    ASSERT_EQ(std::get<std::string>(tokens[43].value), "x");
+    ASSERT_EQ(tokens[44].type, minic::TokenType::SEMICOLON);
+    ASSERT_EQ(tokens[45].type, minic::TokenType::NEWLINE);
+
+    ASSERT_EQ(tokens[46].type, minic::TokenType::RBRACE);
+    ASSERT_EQ(tokens[47].type, minic::TokenType::NEWLINE);
+
+    ASSERT_EQ(tokens[48].type, minic::TokenType::END_OF_FILE);
+}
