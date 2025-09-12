@@ -1,0 +1,5 @@
+### How It Works
+The Lexer class tokenizes miniC source code by scanning a string input character by character. It maintains position, line, and column trackers, skipping whitespace and comments (single-line // or multi-line /* */). It identifies tokens like keywords (e.g., int, if), identifiers (alphanumeric with underscore), integer literals (digits), string literals (quoted, with escapes like \n, \t), operators (e.g., +, ==, <=), punctuation (e.g., {, ;), and special tokens like newline or EOF. For strings, it handles escapes and throws errors for unclosed quotes or invalid escapes. Numbers are parsed as integers, throwing on invalid formats. The main Lex method collects all tokens into a vector, adding an EOF at the end. Recursive calls handle skipped elements like comments.
+
+### Example of Use
+Initialize with source code like "int main() { return 42; }", then call Lex to get a vector of tokens: starting with KEYWORD_INT, IDENTIFIER "main", LPAREN, RPAREN, LBRACE, KEYWORD_RETURN, LITERAL_INT 42, SEMICOLON, RBRACE, and EOF. This output can feed into a parser for a simple main function returning a constant.
