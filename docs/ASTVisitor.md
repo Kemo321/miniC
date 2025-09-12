@@ -1,0 +1,5 @@
+### How It Works
+The ASTVisitor class provides an interface for the Visitor design pattern to traverse the AST without altering the nodes. It defines pure virtual methods to visit the Program (overall structure), Function (with params and body), Stmt (generic statements), and Expr (generic expressions). Derived classes override these to implement specific logic, using const references to nodes for read-only access. Inside overrides, downcasting to specific subclasses (like ReturnStmt or BinaryExpr) allows targeted processing. This separates traversal from node structure, enabling multiple passes (e.g., one for semantics, another for IR) on the same tree. The virtual destructor ensures proper cleanup for derived visitors.
+
+### Example of Use
+Instantiate a derived class like a semantic checker that overrides visit methods to inspect types in expressions and report errors in statements. Then, call visit on the Program root, which recursively calls visits on functions, their statements, and subexpressions, allowing the visitor to build a symbol table while traversing a full program with multiple functions and control flows.

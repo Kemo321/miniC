@@ -1,0 +1,5 @@
+### How It Works
+The Parser class builds an AST from tokens using recursive descent. It tracks current position, peeking/advancing/consuming tokens, and throws on mismatches. The parse method loops over functions to create a Program. Functions parse return type (int/void/str), name, parameters (type-name pairs), and block body. Blocks collect statements until }. Statements include var decls (type name [= expr];), assignments (id = expr;), returns (return [expr];), ifs (if (expr) block [else block]), whiles (while (expr) block). Expressions handle precedence: comparisons (==, !=, <, etc.), terms (+, -), factors (*, /), primaries (literals, ids, parens, unaries like ! or -). Synchronization skips to semicolons on errors. Parameters are comma-separated type-name.
+
+### Example of Use
+Feed tokens from "int add(int a, int b) { return a + b; }" into parse to get a Program with one Function "add" (int return, params a/b as int), body as ReturnStmt with BinaryExpr (IDENTIFIER "a" OP_PLUS IDENTIFIER "b"), ready for semantic analysis.
