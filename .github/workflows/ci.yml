@@ -24,7 +24,17 @@ jobs:
 
       - name: Run Cppcheck
         run: |
-          cppcheck --enable=all --suppress=unusedFunction --error-exitcode=1 . -i build/
+          # --library=googletest: Pomaga zrozumieć makra TEST_F, EXPECT_EQ itp.
+          # -DTEST_F(A,B)=void A##B(): "Zaślepkowe" definicje makr, jeśli biblioteka nie wystarczy.
+          # -I include: Wskazuje folder z nagłówkami (dostosuj, jeśli masz inną nazwę).
+          cppcheck --enable=all \
+            --suppress=unusedFunction \
+            --suppress=missingIncludeSystem \
+            --library=googletest \
+            --inline-suppr \
+            --error-exitcode=1 \
+            -I include \
+            . -i build/
 
   build-and-test:
     needs: static-analysis
