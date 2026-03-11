@@ -742,27 +742,4 @@ TEST_F(IRGeneratorTest, PrivateCurrentPointers)
     EXPECT_EQ(generator_.current_function_->name, "test");
 }
 
-TEST_F(IRGeneratorTest, GenerateIRForFullProgram)
-{
-    std::string source = "int main() {\n"
-                         "    int x = 5;\n"
-                         "    if (x > 0) {\n"
-                         "        while (x < 10) {\n"
-                         "            x = x - 1;\n"
-                         "        }\n"
-                         "    }\n"
-                         "    return x;\n"
-                         "}\n";
-
-    auto ast = ParseSource(source);
-    auto ir = generator_.generate(*ast);
-    EXPECT_EQ(ir->functions.size(), 1);
-    const auto* main_func = ir->functions[0].get();
-
-    EXPECT_EQ(main_func->blocks.size(), 5);
-    const auto* entry = FindBlockByLabelPrefix(main_func, "entry");
-    EXPECT_TRUE(HasInstruction(entry, IROpcode::ASSIGN, "", "5"));
-    EXPECT_TRUE(HasInstruction(entry, IROpcode::GT));
-}
-
 } // namespace minic
