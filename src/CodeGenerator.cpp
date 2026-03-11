@@ -383,12 +383,12 @@ std::string CodeGenerator::get_loc(const std::string& name)
 
 std::string CodeGenerator::find_label_with_substr(const std::string& substr) const
 {
-    for (const auto& lbl : block_labels_)
-    {
-        if (lbl.find(substr) != std::string::npos)
-            return lbl;
-    }
-    return "";
+    auto it = std::find_if(block_labels_.begin(), block_labels_.end(),
+        [&substr](const std::string& lbl)
+        {
+            return lbl.find(substr) != std::string::npos;
+        });
+    return it != block_labels_.end() ? *it : "";
 }
 
 std::string CodeGenerator::infer_target_label_for_current_block() const
@@ -432,8 +432,10 @@ void CodeGenerator::allocate_stack(const IRFunction& func)
     }
 
     std::vector<std::string> params;
-    for (const auto& p : func.parameters)
-        params.push_back(p.name);
+    std::transform(func.parameters.begin(), func.parameters.end(),
+        std::back_inserter(params),
+        [](const auto& p)
+        { return p.name; });
 
     std::vector<std::string> locals;
     for (const auto& v : all_vars)

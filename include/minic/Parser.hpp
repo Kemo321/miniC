@@ -25,7 +25,7 @@ public:
      * @brief Constructs a Parser with the given token stream.
      * @param tokens A reference to a vector of Token objects produced by the Lexer.
      */
-    Parser(const std::vector<Token>& tokens);
+    explicit Parser(const std::vector<Token>& tokens);
 
     /**
      * @brief Parses the entire token stream and returns a Program AST.

@@ -123,14 +123,12 @@ protected:
         if (!func)
             return nullptr;
 
-        for (const auto& block : func->blocks)
-        {
-            if (block && block->label.starts_with(prefix))
+        auto it = std::find_if(func->blocks.begin(), func->blocks.end(),
+            [prefix](const auto& block)
             {
-                return block.get();
-            }
-        }
-        return nullptr;
+                return block && block->label.compare(0, prefix.size(), prefix) == 0;
+            });
+        return it != func->blocks.end() ? it->get() : nullptr;
     }
 };
 
@@ -755,6 +753,24 @@ TEST_F(IRGeneratorTest, GenerateIRForFullProgram)
                          "    }\n"
                          "    return x;\n"
                          "}\n";
+
+    auto ast = ParseSource(source);
+    auto ir = generator_.generate(*ast);
+    EXPECT_EQ(ir->functions.size(), 1);
+    const auto* main_func = ir->functions[0].get();
+
+    EXPECT_EQ(main_func->blocks.size(), 5);
+    const auto* entry = FindBlockByLabelPrefix(main_func, "entry");
+    EXPECT_TRUE(HasInstruction(entry, IROpcode::ASSIGN, "", "5"));
+    EXPECT_TRUE(HasInstruction(entry, IROpcode::GT));   
+
+    const auto* if_then = FindBlockByLabelPrefix(main_func, "if_then");
+    EXPECT_TRUE(HasInstruction(if_then, IROpcode::LT));
+    const auto* while_body = FindBlockByLabelPrefix(main_func, "while_body");
+    EXPECT_TRUE(HasInstruction(while_body, IROpcode::SUB));
+
+    const auto* end_block = FindBlockByLabelPrefix(main_func, "if_end");
+    EXPECT_TRUE(HasInstruction(end_block, IROpcode::RETURN));
 }
 
 } // namespace minic

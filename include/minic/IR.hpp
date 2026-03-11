@@ -61,7 +61,7 @@ public:
      * @param op1 Optional first operand.
      * @param op2 Optional second operand.
      */
-    IRInstruction(IROpcode op,
+    explicit IRInstruction(IROpcode op,
         const std::string& res = {},
         const std::string& op1 = {},
         const std::string& op2 = {})
