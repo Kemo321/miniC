@@ -109,17 +109,19 @@ protected:
             return false;
         for (const auto& instr : block->instructions)
         {
-            if (instr.opcode == op && (res.empty() || instr.result == res) && (op1.empty() || instr.operand1 == op1) && (op2.empty() || instr.operand2 == op2))
-            {
-                return true;
-            }
+            return std::any_of(block->instructions.begin(), block->instructions.end(),
+                [op, &res, &op1, &op2](const auto& instr)
+                {
+                    return instr.opcode == op && (res.empty() || instr.result == res) && (op1.empty() || instr.operand1 == op1) && (op2.empty() || instr.operand2 == op2);
+                });
         }
         return false;
     }
 
     const minic::BasicBlock* FindBlockByLabelPrefix(const minic::IRFunction* func, std::string_view prefix)
     {
-        if (!func) return nullptr;
+        if (!func)
+            return nullptr;
 
         for (const auto& block : func->blocks)
         {
