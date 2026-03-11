@@ -107,27 +107,24 @@ protected:
     {
         if (!block)
             return false;
-        for (const auto& instr : block->instructions)
-        {
-            if (instr.opcode == op && (res.empty() || instr.result == res) && (op1.empty() || instr.operand1 == op1) && (op2.empty() || instr.operand2 == op2))
+        return std::any_of(block->instructions.begin(), block->instructions.end(),
+            [op, &res, &op1, &op2](const auto& instr)
             {
-                return true;
-            }
-        }
-        return false;
+                return instr.opcode == op && (res.empty() || instr.result == res) && (op1.empty() || instr.operand1 == op1) && (op2.empty() || instr.operand2 == op2);
+            });
     }
 
-    // Helper to find block by label prefix
-    const minic::BasicBlock* FindBlockByLabelPrefix(const minic::IRFunction* func, const std::string& prefix)
+    const minic::BasicBlock* FindBlockByLabelPrefix(const minic::IRFunction* func, std::string_view prefix)
     {
-        for (const auto& block : func->blocks)
-        {
-            if (block->label.find(prefix) == 0)
+        if (!func)
+            return nullptr;
+
+        auto it = std::find_if(func->blocks.begin(), func->blocks.end(),
+            [prefix](const auto& block)
             {
-                return block.get();
-            }
-        }
-        return nullptr;
+                return block && block->label.compare(0, prefix.size(), prefix) == 0;
+            });
+        return it != func->blocks.end() ? it->get() : nullptr;
     }
 };
 
@@ -739,19 +736,6 @@ TEST_F(IRGeneratorTest, PrivateCurrentPointers)
     auto func = std::make_unique<minic::IRFunction>("test", TokenType::KEYWORD_VOID, std::vector<minic::Parameter> {});
     generator_.current_function_ = func.get();
     EXPECT_EQ(generator_.current_function_->name, "test");
-}
-
-TEST_F(IRGeneratorTest, GenerateIRForFullProgram)
-{
-    std::string source = "int main() {\n"
-                         "    int x = 5;\n"
-                         "    if (x > 0) {\n"
-                         "        while (x < 10) {\n"
-                         "            x = x - 1;\n"
-                         "        }\n"
-                         "    }\n"
-                         "    return x;\n"
-                         "}\n";
 }
 
 } // namespace minic
