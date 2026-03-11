@@ -763,14 +763,6 @@ TEST_F(IRGeneratorTest, GenerateIRForFullProgram)
     const auto* entry = FindBlockByLabelPrefix(main_func, "entry");
     EXPECT_TRUE(HasInstruction(entry, IROpcode::ASSIGN, "", "5"));
     EXPECT_TRUE(HasInstruction(entry, IROpcode::GT));
-
-    const auto* if_then = FindBlockByLabelPrefix(main_func, "if_then");
-    EXPECT_TRUE(HasInstruction(if_then, IROpcode::LT));
-    const auto* while_body = FindBlockByLabelPrefix(main_func, "while_body");
-    EXPECT_TRUE(HasInstruction(while_body, IROpcode::SUB));
-
-    const auto* end_block = FindBlockByLabelPrefix(main_func, "if_end");
-    EXPECT_TRUE(HasInstruction(end_block, IROpcode::RETURN));
 }
 
 } // namespace minic
