@@ -762,7 +762,7 @@ TEST_F(IRGeneratorTest, GenerateIRForFullProgram)
     EXPECT_EQ(main_func->blocks.size(), 5);
     const auto* entry = FindBlockByLabelPrefix(main_func, "entry");
     EXPECT_TRUE(HasInstruction(entry, IROpcode::ASSIGN, "", "5"));
-    EXPECT_TRUE(HasInstruction(entry, IROpcode::GT));   
+    EXPECT_TRUE(HasInstruction(entry, IROpcode::GT));
 
     const auto* if_then = FindBlockByLabelPrefix(main_func, "if_then");
     EXPECT_TRUE(HasInstruction(if_then, IROpcode::LT));
