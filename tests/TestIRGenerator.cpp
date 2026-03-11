@@ -117,12 +117,13 @@ protected:
         return false;
     }
 
-    // Helper to find block by label prefix
-    const minic::BasicBlock* FindBlockByLabelPrefix(const minic::IRFunction* func, const std::string& prefix)
+    const minic::BasicBlock* FindBlockByLabelPrefix(const minic::IRFunction* func, std::string_view prefix)
     {
+        if (!func) return nullptr;
+
         for (const auto& block : func->blocks)
         {
-            if (block->label.find(prefix) == 0)
+            if (block && block->label.starts_with(prefix))
             {
                 return block.get();
             }
