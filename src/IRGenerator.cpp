@@ -6,6 +6,8 @@ namespace minic
 std::unique_ptr<IRProgram> IRGenerator::generate(const Program& program)
 {
     ir_program_ = std::make_unique<IRProgram>();
+    // Labels must be unique across the whole assembly file (all functions).
+    label_counter_ = 0;
     visit(program);
     return std::move(ir_program_);
 }
@@ -24,7 +26,6 @@ void IRGenerator::visit(const Function& function)
     auto ir_func = std::make_unique<IRFunction>(function.name, function.return_type, function.parameters);
     current_function_ = ir_func.get();
     temp_counter_ = 0;
-    label_counter_ = 0;
     var_map_.clear();
     loop_stack_.clear();
 

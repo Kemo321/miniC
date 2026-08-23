@@ -759,7 +759,6 @@ TEST_F(IRGeneratorTest, PrivateCurrentPointers)
     EXPECT_EQ(generator_.current_function_->name, "test");
 }
 
-
 TEST_F(IRGeneratorTest, CallExprEmitsCall)
 {
     std::vector<std::unique_ptr<minic::Expr>> args;
@@ -778,6 +777,19 @@ TEST_F(IRGeneratorTest, CallExprEmitsCall)
     auto ir = generator_.generate(*minic::BuildProgram(std::move(funcs)));
 
     EXPECT_TRUE(HasInstruction(ir->functions[0]->blocks[0].get(), IROpcode::CALL, "", "add"));
+}
+
+TEST_F(IRGeneratorTest, LabelsUniqueAcrossFunctions)
+{
+    auto ast = ParseSource(
+        "int f() { return 1; }\n"
+        "int g() { return 2; }\n"
+        "int main() { return f() + g(); }\n");
+    auto ir = generator_.generate(*ast);
+    ASSERT_EQ(ir->functions.size(), 3u);
+    EXPECT_EQ(ir->functions[0]->blocks[0]->label, "entry_0");
+    EXPECT_EQ(ir->functions[1]->blocks[0]->label, "entry_1");
+    EXPECT_EQ(ir->functions[2]->blocks[0]->label, "entry_2");
 }
 
 TEST_F(IRGeneratorTest, BuiltinPrintCallIR)
@@ -844,6 +856,5 @@ TEST_F(IRGeneratorTest, AddressOfAndLoadStore)
     EXPECT_TRUE(HasInstruction(entry, IROpcode::STORE));
     EXPECT_TRUE(HasInstruction(entry, IROpcode::LOAD));
 }
-
 
 } // namespace minic
