@@ -465,3 +465,138 @@ TEST_F(SemanticAnalyzerTest, UnsupportedBinaryOp)
     auto program = minic::BuildSimpleProgram(std::move(funcs));
     EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
 }
+
+TEST_F(SemanticAnalyzerTest, BreakOutsideLoop)
+{
+    std::vector<std::unique_ptr<minic::Stmt>> body;
+    body.push_back(std::make_unique<minic::BreakStmt>());
+    std::vector<std::unique_ptr<minic::Function>> funcs;
+    funcs.push_back(minic::BuildFunction("main", minic::TokenType::KEYWORD_VOID, {}, std::move(body)));
+    auto program = minic::BuildSimpleProgram(std::move(funcs));
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}
+
+TEST_F(SemanticAnalyzerTest, ContinueOutsideLoop)
+{
+    std::vector<std::unique_ptr<minic::Stmt>> body;
+    body.push_back(std::make_unique<minic::ContinueStmt>());
+    std::vector<std::unique_ptr<minic::Function>> funcs;
+    funcs.push_back(minic::BuildFunction("main", minic::TokenType::KEYWORD_VOID, {}, std::move(body)));
+    auto program = minic::BuildSimpleProgram(std::move(funcs));
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}
+
+TEST_F(SemanticAnalyzerTest, BreakContinueInsideWhile)
+{
+    std::vector<std::unique_ptr<minic::Stmt>> loop_body;
+    loop_body.push_back(std::make_unique<minic::BreakStmt>());
+    loop_body.push_back(std::make_unique<minic::ContinueStmt>());
+    auto while_stmt = std::make_unique<minic::WhileStmt>(
+        std::make_unique<minic::IntLiteral>(1), std::move(loop_body));
+    std::vector<std::unique_ptr<minic::Stmt>> body;
+    body.push_back(std::move(while_stmt));
+    std::vector<std::unique_ptr<minic::Function>> funcs;
+    funcs.push_back(minic::BuildFunction("main", minic::TokenType::KEYWORD_VOID, {}, std::move(body)));
+    auto program = minic::BuildSimpleProgram(std::move(funcs));
+    EXPECT_NO_THROW(analyzer_.visit(*program));
+}
+
+TEST_F(SemanticAnalyzerTest, ValidFunctionCall)
+{
+    std::string source = "int add(int a, int b) { return a + b; }\n"
+                         "int main() { int x = add(1, 2); return x; }\n";
+    auto program = ParseSource(source);
+    EXPECT_NO_THROW(analyzer_.visit(*program));
+}
+
+TEST_F(SemanticAnalyzerTest, CallWrongArity)
+{
+    std::string source = "int add(int a, int b) { return a + b; }\n"
+                         "int main() { return add(1); }\n";
+    auto program = ParseSource(source);
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}
+
+TEST_F(SemanticAnalyzerTest, CallWrongArgType)
+{
+    std::string source = "int id(int a) { return a; }\n"
+                         "int main() { string s = \"hi\"; return id(s); }\n";
+    auto program = ParseSource(source);
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}
+
+TEST_F(SemanticAnalyzerTest, CallUndeclaredFunction)
+{
+    std::string source = "int main() { return missing(1); }\n";
+    auto program = ParseSource(source);
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}
+
+TEST_F(SemanticAnalyzerTest, BuiltinPrintCall)
+{
+    std::string source = "int main() { print(42); return 0; }\n";
+    auto program = ParseSource(source);
+    EXPECT_NO_THROW(analyzer_.visit(*program));
+}
+
+TEST_F(SemanticAnalyzerTest, BuiltinPrintWrongType)
+{
+    std::string source = "int main() { string s = \"x\"; print(s); return 0; }\n";
+    auto program = ParseSource(source);
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}
+
+TEST_F(SemanticAnalyzerTest, RedefineBuiltinPrint)
+{
+    std::vector<std::unique_ptr<minic::Function>> funcs;
+    funcs.push_back(minic::BuildFunction("print", minic::TokenType::KEYWORD_VOID, {}, {}));
+    auto program = minic::BuildSimpleProgram(std::move(funcs));
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}
+
+TEST_F(SemanticAnalyzerTest, PointerAddressAndDerefTypes)
+{
+    std::string source = "int main() {\n"
+                         "    int x = 5;\n"
+                         "    int *p = &x;\n"
+                         "    *p = 10;\n"
+                         "    int y = *p;\n"
+                         "    return y;\n"
+                         "}\n";
+    auto program = ParseSource(source);
+    EXPECT_NO_THROW(analyzer_.visit(*program));
+}
+
+TEST_F(SemanticAnalyzerTest, AddressOfNonIntRejected)
+{
+    std::string source = "int main() {\n"
+                         "    string s = \"hi\";\n"
+                         "    int *p = &s;\n"
+                         "    return 0;\n"
+                         "}\n";
+    auto program = ParseSource(source);
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}
+
+TEST_F(SemanticAnalyzerTest, DerefNonPointerRejected)
+{
+    std::string source = "int main() {\n"
+                         "    int x = 1;\n"
+                         "    int y = *x;\n"
+                         "    return y;\n"
+                         "}\n";
+    auto program = ParseSource(source);
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}
+
+TEST_F(SemanticAnalyzerTest, PointerIntTypeMismatch)
+{
+    std::string source = "int main() {\n"
+                         "    int x = 1;\n"
+                         "    int *p = &x;\n"
+                         "    p = x;\n"
+                         "    return 0;\n"
+                         "}\n";
+    auto program = ParseSource(source);
+    EXPECT_THROW(analyzer_.visit(*program), minic::SemanticError);
+}

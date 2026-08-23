@@ -24,6 +24,7 @@ public:
     using Parser::parse_return_statement;
     using Parser::parse_statement;
     using Parser::parse_term;
+    using Parser::parse_unary;
     using Parser::parse_while_statement;
     using Parser::Parser;
     using Parser::peek;
@@ -558,4 +559,133 @@ TEST_F(ParserTest, ParseComplexProgram)
     minic::Lexer lexer(source);
     tokens_ = lexer.Lex();
     EXPECT_NO_THROW(parser_.parse());
+}
+
+TEST_F(ParserTest, ParseCallExprNoArgs)
+{
+    tokens_ = {
+        MakeToken(minic::TokenType::IDENTIFIER, std::string("foo")),
+        MakeToken(minic::TokenType::LPAREN),
+        MakeToken(minic::TokenType::RPAREN)
+    };
+    auto expr = parser_.parse_primary();
+    auto* call = dynamic_cast<minic::CallExpr*>(expr.get());
+    ASSERT_NE(call, nullptr);
+    EXPECT_EQ(call->callee, "foo");
+    EXPECT_TRUE(call->arguments.empty());
+}
+
+TEST_F(ParserTest, ParseCallExprWithArgs)
+{
+    tokens_ = {
+        MakeToken(minic::TokenType::IDENTIFIER, std::string("add")),
+        MakeToken(minic::TokenType::LPAREN),
+        MakeToken(minic::TokenType::LITERAL_INT, 1),
+        MakeToken(minic::TokenType::COMMA),
+        MakeToken(minic::TokenType::IDENTIFIER, std::string("y")),
+        MakeToken(minic::TokenType::RPAREN)
+    };
+    auto expr = parser_.parse_expression();
+    auto* call = dynamic_cast<minic::CallExpr*>(expr.get());
+    ASSERT_NE(call, nullptr);
+    EXPECT_EQ(call->callee, "add");
+    ASSERT_EQ(call->arguments.size(), 2);
+}
+
+TEST_F(ParserTest, ParseUnaryAddressOf)
+{
+    tokens_ = {
+        MakeToken(minic::TokenType::OP_ADDRESS),
+        MakeToken(minic::TokenType::IDENTIFIER, std::string("x"))
+    };
+    auto expr = parser_.parse_unary();
+    auto* addr = dynamic_cast<minic::AddressOfExpr*>(expr.get());
+    ASSERT_NE(addr, nullptr);
+    auto* id = dynamic_cast<minic::Identifier*>(addr->operand.get());
+    ASSERT_NE(id, nullptr);
+    EXPECT_EQ(id->name, "x");
+}
+
+TEST_F(ParserTest, ParseUnaryDereference)
+{
+    tokens_ = {
+        MakeToken(minic::TokenType::OP_MULTIPLY),
+        MakeToken(minic::TokenType::IDENTIFIER, std::string("p"))
+    };
+    auto expr = parser_.parse_unary();
+    auto* deref = dynamic_cast<minic::DereferenceExpr*>(expr.get());
+    ASSERT_NE(deref, nullptr);
+    auto* id = dynamic_cast<minic::Identifier*>(deref->operand.get());
+    ASSERT_NE(id, nullptr);
+    EXPECT_EQ(id->name, "p");
+}
+
+TEST_F(ParserTest, ParseDerefAssignStatement)
+{
+    tokens_ = {
+        MakeToken(minic::TokenType::OP_MULTIPLY),
+        MakeToken(minic::TokenType::IDENTIFIER, std::string("p")),
+        MakeToken(minic::TokenType::OP_ASSIGN),
+        MakeToken(minic::TokenType::LITERAL_INT, 7),
+        MakeToken(minic::TokenType::SEMICOLON)
+    };
+    auto stmt = parser_.parse_statement();
+    auto* assign = dynamic_cast<minic::DerefAssignStmt*>(stmt.get());
+    ASSERT_NE(assign, nullptr);
+    EXPECT_EQ(static_cast<minic::IntLiteral*>(assign->value.get())->value, 7);
+}
+
+TEST_F(ParserTest, ParseBreakContinueStatements)
+{
+    tokens_ = {
+        MakeToken(minic::TokenType::KEYWORD_BREAK),
+        MakeToken(minic::TokenType::SEMICOLON)
+    };
+    parser_.set_current(0);
+    auto brk = parser_.parse_statement();
+    EXPECT_NE(dynamic_cast<minic::BreakStmt*>(brk.get()), nullptr);
+
+    tokens_ = {
+        MakeToken(minic::TokenType::KEYWORD_CONTINUE),
+        MakeToken(minic::TokenType::SEMICOLON)
+    };
+    parser_.set_current(0);
+    auto cont = parser_.parse_statement();
+    EXPECT_NE(dynamic_cast<minic::ContinueStmt*>(cont.get()), nullptr);
+}
+
+TEST_F(ParserTest, ParsePointerVarDecl)
+{
+    std::string source = "int main() {\n"
+                         "    int x = 1;\n"
+                         "    int *p = &x;\n"
+                         "    *p = 2;\n"
+                         "    return *p;\n"
+                         "}\n";
+    minic::Lexer lexer(source);
+    tokens_ = lexer.Lex();
+    auto program = parser_.parse();
+    ASSERT_EQ(program->functions.size(), 1);
+    ASSERT_GE(program->functions[0]->body.size(), 3);
+    auto* decl = dynamic_cast<minic::VarDeclStmt*>(program->functions[0]->body[1].get());
+    ASSERT_NE(decl, nullptr);
+    EXPECT_EQ(decl->type, minic::TokenType::TYPE_PTR_INT);
+    EXPECT_EQ(decl->name, "p");
+}
+
+TEST_F(ParserTest, ParseCallAsStatement)
+{
+    std::string source = "int main() {\n"
+                         "    print(42);\n"
+                         "    return 0;\n"
+                         "}\n";
+    minic::Lexer lexer(source);
+    tokens_ = lexer.Lex();
+    auto program = parser_.parse();
+    ASSERT_EQ(program->functions.size(), 1);
+    auto* expr_stmt = dynamic_cast<minic::ExprStmt*>(program->functions[0]->body[0].get());
+    ASSERT_NE(expr_stmt, nullptr);
+    auto* call = dynamic_cast<minic::CallExpr*>(expr_stmt->expression.get());
+    ASSERT_NE(call, nullptr);
+    EXPECT_EQ(call->callee, "print");
 }

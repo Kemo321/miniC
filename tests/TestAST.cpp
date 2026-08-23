@@ -115,3 +115,54 @@ TEST(ASTNodeTest, Program)
     ASSERT_EQ(prog.functions.size(), 1);
     EXPECT_EQ(prog.functions[0]->name, "main");
 }
+
+TEST(ASTNodeTest, CallExpr)
+{
+    std::vector<std::unique_ptr<Expr>> args;
+    args.push_back(std::make_unique<IntLiteral>(1));
+    args.push_back(std::make_unique<Identifier>("x"));
+    CallExpr call("add", std::move(args));
+    EXPECT_EQ(call.callee, "add");
+    ASSERT_EQ(call.arguments.size(), 2);
+    EXPECT_EQ(static_cast<IntLiteral*>(call.arguments[0].get())->value, 1);
+    EXPECT_EQ(static_cast<Identifier*>(call.arguments[1].get())->name, "x");
+}
+
+TEST(ASTNodeTest, ExprStmt)
+{
+    ExprStmt stmt(std::make_unique<CallExpr>("print", std::vector<std::unique_ptr<Expr>>{}));
+    auto* call = dynamic_cast<CallExpr*>(stmt.expression.get());
+    ASSERT_NE(call, nullptr);
+    EXPECT_EQ(call->callee, "print");
+}
+
+TEST(ASTNodeTest, BreakAndContinueStmt)
+{
+    BreakStmt brk;
+    ContinueStmt cont;
+    EXPECT_NE(dynamic_cast<Stmt*>(&brk), nullptr);
+    EXPECT_NE(dynamic_cast<Stmt*>(&cont), nullptr);
+}
+
+TEST(ASTNodeTest, AddressOfAndDereferenceExpr)
+{
+    AddressOfExpr addr(std::make_unique<Identifier>("x"));
+    EXPECT_EQ(static_cast<Identifier*>(addr.operand.get())->name, "x");
+
+    DereferenceExpr deref(std::make_unique<Identifier>("p"));
+    EXPECT_EQ(static_cast<Identifier*>(deref.operand.get())->name, "p");
+}
+
+TEST(ASTNodeTest, DerefAssignStmt)
+{
+    DerefAssignStmt stmt(std::make_unique<Identifier>("p"), std::make_unique<IntLiteral>(42));
+    EXPECT_EQ(static_cast<Identifier*>(stmt.target.get())->name, "p");
+    EXPECT_EQ(static_cast<IntLiteral*>(stmt.value.get())->value, 42);
+}
+
+TEST(ASTNodeTest, PointerParameterType)
+{
+    Parameter param(TokenType::TYPE_PTR_INT, "p");
+    EXPECT_EQ(param.type, TokenType::TYPE_PTR_INT);
+    EXPECT_EQ(param.name, "p");
+}

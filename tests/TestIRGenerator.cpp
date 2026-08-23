@@ -1,5 +1,6 @@
 #include "minic/IRGenerator.hpp"
 #include "minic/Parser.hpp"
+#include <algorithm>
 #include <gtest/gtest.h>
 
 namespace minic
@@ -22,64 +23,84 @@ public:
 };
 
 // Helper to build AST nodes for testing
-std::unique_ptr<Program> BuildProgram(std::vector<std::unique_ptr<Function>> funcs)
+inline std::unique_ptr<Program> BuildProgram(std::vector<std::unique_ptr<Function>> funcs)
 {
     return std::make_unique<Program>(std::move(funcs));
 }
 
-std::unique_ptr<Function> BuildFunction(const std::string& name, TokenType ret_type, std::vector<Parameter> params, std::vector<std::unique_ptr<Stmt>> body)
+inline std::unique_ptr<Function> BuildFunction(const std::string& name, TokenType ret_type, std::vector<Parameter> params, std::vector<std::unique_ptr<Stmt>> body)
 {
     return std::make_unique<Function>(name, ret_type, std::move(params), std::move(body));
 }
 
-std::unique_ptr<VarDeclStmt> BuildVarDecl(TokenType type, const std::string& name, std::unique_ptr<Expr> init = nullptr)
+inline std::unique_ptr<VarDeclStmt> BuildVarDecl(TokenType type, const std::string& name, std::unique_ptr<Expr> init = nullptr)
 {
     return std::make_unique<VarDeclStmt>(type, name, std::move(init));
 }
 
-std::unique_ptr<AssignStmt> BuildAssign(const std::string& name, std::unique_ptr<Expr> value)
+inline std::unique_ptr<AssignStmt> BuildAssign(const std::string& name, std::unique_ptr<Expr> value)
 {
     return std::make_unique<AssignStmt>(name, std::move(value));
 }
 
-std::unique_ptr<ReturnStmt> BuildReturn(std::unique_ptr<Expr> value = nullptr)
+inline std::unique_ptr<ReturnStmt> BuildReturn(std::unique_ptr<Expr> value = nullptr)
 {
     return std::make_unique<ReturnStmt>(std::move(value));
 }
 
-std::unique_ptr<IntLiteral> BuildIntLit(int val)
+inline std::unique_ptr<IntLiteral> BuildIntLit(int val)
 {
     return std::make_unique<IntLiteral>(val);
 }
 
-std::unique_ptr<StringLiteral> BuildStrLit(const std::string& val)
+inline std::unique_ptr<StringLiteral> BuildStrLit(const std::string& val)
 {
     return std::make_unique<StringLiteral>(val);
 }
 
-std::unique_ptr<Identifier> BuildId(const std::string& name)
+inline std::unique_ptr<Identifier> BuildId(const std::string& name)
 {
     return std::make_unique<Identifier>(name);
 }
 
-std::unique_ptr<UnaryExpr> BuildUnary(TokenType op, std::unique_ptr<Expr> operand)
+inline std::unique_ptr<UnaryExpr> BuildUnary(TokenType op, std::unique_ptr<Expr> operand)
 {
     return std::make_unique<UnaryExpr>(op, std::move(operand));
 }
 
-std::unique_ptr<BinaryExpr> BuildBinary(std::unique_ptr<Expr> left, TokenType op, std::unique_ptr<Expr> right)
+inline std::unique_ptr<BinaryExpr> BuildBinary(std::unique_ptr<Expr> left, TokenType op, std::unique_ptr<Expr> right)
 {
     return std::make_unique<BinaryExpr>(std::move(left), op, std::move(right));
 }
 
-std::unique_ptr<IfStmt> BuildIf(std::unique_ptr<Expr> cond, std::vector<std::unique_ptr<Stmt>> then_b, std::vector<std::unique_ptr<Stmt>> else_b)
+inline std::unique_ptr<IfStmt> BuildIf(std::unique_ptr<Expr> cond, std::vector<std::unique_ptr<Stmt>> then_b, std::vector<std::unique_ptr<Stmt>> else_b)
 {
     return std::make_unique<IfStmt>(std::move(cond), std::move(then_b), std::move(else_b));
 }
 
-std::unique_ptr<WhileStmt> BuildWhile(std::unique_ptr<Expr> cond, std::vector<std::unique_ptr<Stmt>> body)
+inline std::unique_ptr<WhileStmt> BuildWhile(std::unique_ptr<Expr> cond, std::vector<std::unique_ptr<Stmt>> body)
 {
     return std::make_unique<WhileStmt>(std::move(cond), std::move(body));
+}
+
+inline std::unique_ptr<CallExpr> BuildCall(const std::string& name, std::vector<std::unique_ptr<Expr>> args)
+{
+    return std::make_unique<CallExpr>(name, std::move(args));
+}
+
+inline std::unique_ptr<AddressOfExpr> BuildAddressOf(std::unique_ptr<Expr> operand)
+{
+    return std::make_unique<AddressOfExpr>(std::move(operand));
+}
+
+inline std::unique_ptr<DereferenceExpr> BuildDeref(std::unique_ptr<Expr> operand)
+{
+    return std::make_unique<DereferenceExpr>(std::move(operand));
+}
+
+inline std::unique_ptr<ExprStmt> BuildExprStmt(std::unique_ptr<Expr> expr)
+{
+    return std::make_unique<ExprStmt>(std::move(expr));
 }
 
 class IRGeneratorTest : public ::testing::Test
@@ -737,5 +758,92 @@ TEST_F(IRGeneratorTest, PrivateCurrentPointers)
     generator_.current_function_ = func.get();
     EXPECT_EQ(generator_.current_function_->name, "test");
 }
+
+
+TEST_F(IRGeneratorTest, CallExprEmitsCall)
+{
+    std::vector<std::unique_ptr<minic::Expr>> args;
+    args.push_back(minic::BuildIntLit(1));
+    args.push_back(minic::BuildIntLit(2));
+    auto call = minic::BuildCall("add", std::move(args));
+    auto assign = minic::BuildAssign("x", std::move(call));
+
+    std::vector<std::unique_ptr<minic::Stmt>> body;
+    body.push_back(minic::BuildVarDecl(TokenType::KEYWORD_INT, "x"));
+    body.push_back(std::move(assign));
+
+    auto func = minic::BuildFunction("main", TokenType::KEYWORD_VOID, {}, std::move(body));
+    std::vector<std::unique_ptr<minic::Function>> funcs;
+    funcs.push_back(std::move(func));
+    auto ir = generator_.generate(*minic::BuildProgram(std::move(funcs)));
+
+    EXPECT_TRUE(HasInstruction(ir->functions[0]->blocks[0].get(), IROpcode::CALL, "", "add"));
+}
+
+TEST_F(IRGeneratorTest, BuiltinPrintCallIR)
+{
+    auto ast = ParseSource("int main() { print(7); return 0; }\n");
+    auto ir = generator_.generate(*ast);
+    EXPECT_TRUE(HasInstruction(ir->functions[0]->blocks[0].get(), IROpcode::CALL, "", "print"));
+}
+
+TEST_F(IRGeneratorTest, BreakEmitsJumpToWhileEnd)
+{
+    std::vector<std::unique_ptr<minic::Stmt>> loop_body;
+    loop_body.push_back(std::make_unique<minic::BreakStmt>());
+    auto while_stmt = minic::BuildWhile(minic::BuildIntLit(1), std::move(loop_body));
+
+    std::vector<std::unique_ptr<minic::Stmt>> body;
+    body.push_back(std::move(while_stmt));
+
+    auto func = minic::BuildFunction("main", TokenType::KEYWORD_VOID, {}, std::move(body));
+    std::vector<std::unique_ptr<minic::Function>> funcs;
+    funcs.push_back(std::move(func));
+    auto ir = generator_.generate(*minic::BuildProgram(std::move(funcs)));
+
+    const auto* body_block = FindBlockByLabelPrefix(ir->functions[0].get(), "while_body");
+    const auto* end_block = FindBlockByLabelPrefix(ir->functions[0].get(), "while_end");
+    ASSERT_NE(body_block, nullptr);
+    ASSERT_NE(end_block, nullptr);
+    EXPECT_TRUE(HasInstruction(body_block, IROpcode::JUMP, "", end_block->label));
+}
+
+TEST_F(IRGeneratorTest, ContinueEmitsJumpToWhileCond)
+{
+    std::vector<std::unique_ptr<minic::Stmt>> loop_body;
+    loop_body.push_back(std::make_unique<minic::ContinueStmt>());
+    auto while_stmt = minic::BuildWhile(minic::BuildIntLit(1), std::move(loop_body));
+
+    std::vector<std::unique_ptr<minic::Stmt>> body;
+    body.push_back(std::move(while_stmt));
+
+    auto func = minic::BuildFunction("main", TokenType::KEYWORD_VOID, {}, std::move(body));
+    std::vector<std::unique_ptr<minic::Function>> funcs;
+    funcs.push_back(std::move(func));
+    auto ir = generator_.generate(*minic::BuildProgram(std::move(funcs)));
+
+    const auto* body_block = FindBlockByLabelPrefix(ir->functions[0].get(), "while_body");
+    const auto* cond_block = FindBlockByLabelPrefix(ir->functions[0].get(), "while_cond");
+    ASSERT_NE(body_block, nullptr);
+    ASSERT_NE(cond_block, nullptr);
+    EXPECT_TRUE(HasInstruction(body_block, IROpcode::JUMP, "", cond_block->label));
+}
+
+TEST_F(IRGeneratorTest, AddressOfAndLoadStore)
+{
+    auto ast = ParseSource(
+        "int main() {\n"
+        "    int x = 5;\n"
+        "    int *p = &x;\n"
+        "    *p = 9;\n"
+        "    return *p;\n"
+        "}\n");
+    auto ir = generator_.generate(*ast);
+    const auto* entry = ir->functions[0]->blocks[0].get();
+    EXPECT_TRUE(HasInstruction(entry, IROpcode::ADDR));
+    EXPECT_TRUE(HasInstruction(entry, IROpcode::STORE));
+    EXPECT_TRUE(HasInstruction(entry, IROpcode::LOAD));
+}
+
 
 } // namespace minic

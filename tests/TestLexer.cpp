@@ -668,3 +668,49 @@ TEST_F(LexerTest, ComplexProgram3)
 
     ASSERT_EQ(tokens[48].type, minic::TokenType::END_OF_FILE);
 }
+
+TEST_F(LexerTest, KeywordsBreakContinue)
+{
+    lexer.source_ = "break continue";
+    lexer.pos_ = 0;
+    lexer.column_ = 1;
+    lexer.line_ = 1;
+
+    minic::Token token = lexer.scan_identifier();
+    ASSERT_EQ(token.type, minic::TokenType::KEYWORD_BREAK);
+
+    lexer.skip_whitespace();
+    token = lexer.scan_identifier();
+    ASSERT_EQ(token.type, minic::TokenType::KEYWORD_CONTINUE);
+}
+
+TEST_F(LexerTest, AddressOfOperator)
+{
+    lexer.source_ = "&x";
+    lexer.pos_ = 0;
+    lexer.column_ = 1;
+    lexer.line_ = 1;
+
+    minic::Token token = lexer.next_token();
+    ASSERT_EQ(token.type, minic::TokenType::OP_ADDRESS);
+
+    token = lexer.next_token();
+    ASSERT_EQ(token.type, minic::TokenType::IDENTIFIER);
+    ASSERT_EQ(std::get<std::string>(token.value), "x");
+}
+
+TEST_F(LexerTest, LexPointerAndControlFlowSnippet)
+{
+    lexer.source_ = "int *p = &x; break; continue;";
+    auto tokens = lexer.Lex();
+
+    ASSERT_EQ(tokens[0].type, minic::TokenType::KEYWORD_INT);
+    ASSERT_EQ(tokens[1].type, minic::TokenType::OP_MULTIPLY);
+    ASSERT_EQ(tokens[2].type, minic::TokenType::IDENTIFIER);
+    ASSERT_EQ(std::get<std::string>(tokens[2].value), "p");
+    ASSERT_EQ(tokens[3].type, minic::TokenType::OP_ASSIGN);
+    ASSERT_EQ(tokens[4].type, minic::TokenType::OP_ADDRESS);
+    ASSERT_EQ(tokens[5].type, minic::TokenType::IDENTIFIER);
+    ASSERT_EQ(tokens[7].type, minic::TokenType::KEYWORD_BREAK);
+    ASSERT_EQ(tokens[9].type, minic::TokenType::KEYWORD_CONTINUE);
+}
