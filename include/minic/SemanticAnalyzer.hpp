@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 /**
  * @namespace minic
@@ -104,10 +105,20 @@ public:
 private:
     using SymbolTable = std::unordered_map<std::string, TokenType>; ///< Maps variable names to their TokenType.
 
+    /**
+     * @brief Stored signature of a declared function.
+     */
+    struct FunctionInfo
+    {
+        TokenType return_type;
+        std::vector<TokenType> param_types;
+    };
+
     std::stack<SymbolTable> scopes_; ///< Stack of symbol tables for nested scopes.
-    std::unordered_map<std::string, TokenType> functions_; ///< Global function table (name to return type).
+    std::unordered_map<std::string, FunctionInfo> functions_; ///< Global function table (name -> signature).
 
     TokenType current_function_type_ = TokenType::KEYWORD_VOID; ///< Track current function's return type.
+    int loop_depth_ = 0; ///< Nesting depth of while loops (for break/continue).
 
     /**
      * @brief Pushes a new scope onto the stack.

@@ -26,6 +26,7 @@ void IRGenerator::visit(const Function& function)
     temp_counter_ = 0;
     label_counter_ = 0;
     var_map_.clear();
+    loop_stack_.clear();
 
     auto entry_block = std::make_unique<BasicBlock>(new_label("entry"));
     current_block_ = entry_block.get();
@@ -48,7 +49,11 @@ void IRGenerator::visit(const Function& function)
 
 void IRGenerator::visit(const Stmt& stmt)
 {
-    if (auto* decl = dynamic_cast<const VarDeclStmt*>(&stmt))
+    if (auto* expr_stmt = dynamic_cast<const ExprStmt*>(&stmt))
+    {
+        generate_expr(*expr_stmt->expression); // Evaluate for side effects (e.g. calls)
+    }
+    else if (auto* decl = dynamic_cast<const VarDeclStmt*>(&stmt))
     {
         std::string var = decl->name;
         var_map_[var] = var;
@@ -62,6 +67,12 @@ void IRGenerator::visit(const Stmt& stmt)
     {
         std::string value_temp = generate_expr(*assign->value);
         emit(IROpcode::ASSIGN, assign->name, value_temp);
+    }
+    else if (auto* dassign = dynamic_cast<const DerefAssignStmt*>(&stmt))
+    {
+        std::string ptr_temp = generate_expr(*dassign->target);
+        std::string value_temp = generate_expr(*dassign->value);
+        emit(IROpcode::STORE, "", ptr_temp, value_temp);
     }
     else if (auto* ret = dynamic_cast<const ReturnStmt*>(&stmt))
     {
@@ -111,7 +122,9 @@ void IRGenerator::visit(const Stmt& stmt)
         std::string body_label = new_label("while_body");
         std::string end_label = new_label("while_end");
 
-        emit(IROpcode::JUMP, cond_label);
+        loop_stack_.push_back(LoopLabels { cond_label, end_label });
+
+        emit(IROpcode::JUMP, "", cond_label);
 
         // Cond block
         auto cond_block = std::make_unique<BasicBlock>(cond_label);
@@ -126,12 +139,26 @@ void IRGenerator::visit(const Stmt& stmt)
         current_function_->blocks.push_back(std::move(body_block));
         for (const auto& s : while_stmt->body)
             visit(*s);
-        emit(IROpcode::JUMP, cond_label);
+        emit(IROpcode::JUMP, "", cond_label);
+
+        loop_stack_.pop_back();
 
         // End block
         auto end_block = std::make_unique<BasicBlock>(end_label);
         current_block_ = end_block.get();
         current_function_->blocks.push_back(std::move(end_block));
+    }
+    else if (dynamic_cast<const BreakStmt*>(&stmt))
+    {
+        if (loop_stack_.empty())
+            throw std::runtime_error("'break' outside of a loop in IR generation");
+        emit(IROpcode::JUMP, "", loop_stack_.back().end_label);
+    }
+    else if (dynamic_cast<const ContinueStmt*>(&stmt))
+    {
+        if (loop_stack_.empty())
+            throw std::runtime_error("'continue' outside of a loop in IR generation");
+        emit(IROpcode::JUMP, "", loop_stack_.back().cond_label);
     }
     else
     {
@@ -217,6 +244,37 @@ std::string IRGenerator::generate_expr(const Expr& expr)
         emit(op, result_temp, left_temp, right_temp);
         return result_temp;
     }
+    else if (auto* call = dynamic_cast<const CallExpr*>(&expr))
+    {
+        std::vector<std::string> arg_temps;
+        arg_temps.reserve(call->arguments.size());
+        for (const auto& arg : call->arguments)
+        {
+            arg_temps.push_back(generate_expr(*arg));
+        }
+        std::string result_temp = new_temp();
+        emit(IROpcode::CALL, result_temp, call->callee, "", std::move(arg_temps));
+        return result_temp;
+    }
+    else if (auto* addr = dynamic_cast<const AddressOfExpr*>(&expr))
+    {
+        auto* id = dynamic_cast<const Identifier*>(addr->operand.get());
+        if (!id)
+            throw std::runtime_error("Address-of requires an identifier in IR generation");
+        auto it = var_map_.find(id->name);
+        if (it == var_map_.end())
+            throw std::runtime_error("Undeclared variable in address-of");
+        std::string result_temp = new_temp();
+        emit(IROpcode::ADDR, result_temp, it->second);
+        return result_temp;
+    }
+    else if (auto* deref = dynamic_cast<const DereferenceExpr*>(&expr))
+    {
+        std::string ptr_temp = generate_expr(*deref->operand);
+        std::string result_temp = new_temp();
+        emit(IROpcode::LOAD, result_temp, ptr_temp);
+        return result_temp;
+    }
     else
     {
         throw std::runtime_error("Unsupported expression in IR generation");
@@ -233,9 +291,13 @@ std::string IRGenerator::new_label(const std::string& prefix)
     return prefix + "_" + std::to_string(label_counter_++);
 }
 
-void IRGenerator::emit(IROpcode op, const std::string& res, const std::string& op1, const std::string& op2)
+void IRGenerator::emit(IROpcode op,
+    const std::string& res,
+    const std::string& op1,
+    const std::string& op2,
+    std::vector<std::string> args)
 {
-    current_block_->instructions.emplace_back(op, res, op1, op2);
+    current_block_->instructions.emplace_back(op, res, op1, op2, std::move(args));
 }
 
 } // namespace minic

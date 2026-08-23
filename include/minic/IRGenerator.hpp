@@ -7,6 +7,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace minic
 {
@@ -77,6 +78,16 @@ private:
     std::map<std::string, std::string> var_map_; ///< Map from source var name to IR var/temp
 
     /**
+     * @brief Labels for the nearest enclosing while loop (continue -> cond, break -> end).
+     */
+    struct LoopLabels
+    {
+        std::string cond_label;
+        std::string end_label;
+    };
+    std::vector<LoopLabels> loop_stack_; ///< Nesting stack of active loop labels
+
+    /**
      * @brief Create a fresh temporary variable name.
      *
      * Returns a unique temporary string (used as result names for instructions).
@@ -104,7 +115,11 @@ private:
      * @param op1 Optional first operand.
      * @param op2 Optional second operand.
      */
-    void emit(IROpcode op, const std::string& res = "", const std::string& op1 = "", const std::string& op2 = "");
+    void emit(IROpcode op,
+        const std::string& res = "",
+        const std::string& op1 = "",
+        const std::string& op2 = "",
+        std::vector<std::string> args = {});
 
     /**
      * @brief Generate IR for an expression and return its result name.

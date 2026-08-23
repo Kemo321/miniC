@@ -29,6 +29,8 @@ enum class TokenType
     KEYWORD_ELSE,
     KEYWORD_WHILE,
     KEYWORD_RETURN,
+    KEYWORD_BREAK,
+    KEYWORD_CONTINUE,
 
     // Identifiers
     IDENTIFIER,
@@ -40,7 +42,7 @@ enum class TokenType
     // Operators
     OP_PLUS, // +
     OP_MINUS, // -
-    OP_MULTIPLY, // *
+    OP_MULTIPLY, // * (binary multiply or unary dereference)
     OP_DIVIDE, // /
     OP_ASSIGN, // =
     OP_EQUAL, // ==
@@ -50,6 +52,10 @@ enum class TokenType
     OP_GREATER, // >
     OP_LESS_EQ, // <=
     OP_GREATER_EQ, // >=
+    OP_ADDRESS, // & (address-of)
+
+    // Semantic-only types (not produced by the lexer)
+    TYPE_PTR_INT, // pointer to int
 
     // Punctuation
     LPAREN, // (

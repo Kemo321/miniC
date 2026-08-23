@@ -31,11 +31,13 @@ enum class IROpcode
     GE, // Comparisons
     ASSIGN, // Assignment
     LOAD,
-    STORE, // Variable access
+    STORE, // Indirect memory access via pointer
+    ADDR, // Address-of (&var)
     JUMP,
     JUMPIF, // Control flow
     JUMPIFNOT, // Control flow
     RETURN, // Return
+    CALL, // Function call
     LABEL // Block label
 };
 
@@ -51,8 +53,9 @@ class IRInstruction
 public:
     IROpcode opcode; ///< The opcode for this instruction
     std::string result; ///< Destination (temp var or label)
-    std::string operand1; ///< First operand (or sole operand)
+    std::string operand1; ///< First operand (or sole operand / callee name for CALL)
     std::string operand2; ///< Second operand (for binary ops)
+    std::vector<std::string> args; ///< Argument temps for CALL
 
     /**
      * @brief Construct an IRInstruction.
@@ -60,15 +63,18 @@ public:
      * @param res Optional result name.
      * @param op1 Optional first operand.
      * @param op2 Optional second operand.
+     * @param call_args Optional argument list (used by CALL).
      */
     explicit IRInstruction(IROpcode op,
         const std::string& res = {},
         const std::string& op1 = {},
-        const std::string& op2 = {})
+        const std::string& op2 = {},
+        std::vector<std::string> call_args = {})
         : opcode(op)
         , result(res)
         , operand1(op1)
         , operand2(op2)
+        , args(std::move(call_args))
     {
     }
 };

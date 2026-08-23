@@ -109,10 +109,22 @@ private:
     std::unique_ptr<Expr> parse_factor();
 
     /**
+     * @brief Parses unary expressions (!, -, *, &).
+     * @return A unique_ptr to the parsed Expr node.
+     */
+    std::unique_ptr<Expr> parse_unary();
+
+    /**
      * @brief Parses a primary expression (literals, identifiers, parenthesized expressions).
      * @return A unique_ptr to the parsed Expr node.
      */
     std::unique_ptr<Expr> parse_primary();
+
+    /**
+     * @brief Parses a type token and optional pointer star (e.g. int, int *).
+     * @return The resolved TokenType (may be TYPE_PTR_INT).
+     */
+    TokenType parse_type();
 
     /**
      * @brief Parses a statement (declaration, block, control flow, expression statement).

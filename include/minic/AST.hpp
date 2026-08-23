@@ -2,6 +2,9 @@
 #define MINIC_AST_HPP
 #include "Lexer.hpp"
 #include <memory>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
 namespace minic
 {
@@ -98,10 +101,64 @@ public:
 };
 
 /**
+ * @brief Function call expression (e.g., foo(a, b)).
+ */
+class CallExpr : public Expr
+{
+public:
+    std::string callee; ///< Name of the function being called
+    std::vector<std::unique_ptr<Expr>> arguments; ///< Positional argument expressions
+    CallExpr(const std::string& name, std::vector<std::unique_ptr<Expr>> args)
+        : callee(name)
+        , arguments(std::move(args))
+    {
+    }
+};
+
+/**
+ * @brief Address-of expression (e.g., &x).
+ */
+class AddressOfExpr : public Expr
+{
+public:
+    std::unique_ptr<Expr> operand;
+    explicit AddressOfExpr(std::unique_ptr<Expr> oper)
+        : operand(std::move(oper))
+    {
+    }
+};
+
+/**
+ * @brief Pointer dereference expression (e.g., *p).
+ */
+class DereferenceExpr : public Expr
+{
+public:
+    std::unique_ptr<Expr> operand;
+    explicit DereferenceExpr(std::unique_ptr<Expr> oper)
+        : operand(std::move(oper))
+    {
+    }
+};
+
+/**
  * @brief Base class for all statement nodes.
  */
 class Stmt : public ASTNode
 {
+};
+
+/**
+ * @brief Expression statement (e.g., a discarded call: foo();).
+ */
+class ExprStmt : public Stmt
+{
+public:
+    std::unique_ptr<Expr> expression;
+    explicit ExprStmt(std::unique_ptr<Expr> e)
+        : expression(std::move(e))
+    {
+    }
 };
 
 /**
@@ -152,7 +209,21 @@ public:
 };
 
 /**
- * @brief Assignment statement.
+ * @brief Break out of the nearest enclosing loop.
+ */
+class BreakStmt : public Stmt
+{
+};
+
+/**
+ * @brief Continue to the next iteration of the nearest enclosing loop.
+ */
+class ContinueStmt : public Stmt
+{
+};
+
+/**
+ * @brief Assignment statement (named variable).
  */
 class AssignStmt : public Stmt
 {
@@ -161,6 +232,21 @@ public:
     std::unique_ptr<Expr> value;
     AssignStmt(const std::string& n, std::unique_ptr<Expr> v)
         : name(n)
+        , value(std::move(v))
+    {
+    }
+};
+
+/**
+ * @brief Assignment through a pointer (e.g., *p = value).
+ */
+class DerefAssignStmt : public Stmt
+{
+public:
+    std::unique_ptr<Expr> target; ///< Expression yielding a pointer
+    std::unique_ptr<Expr> value;
+    DerefAssignStmt(std::unique_ptr<Expr> t, std::unique_ptr<Expr> v)
+        : target(std::move(t))
         , value(std::move(v))
     {
     }

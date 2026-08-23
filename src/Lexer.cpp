@@ -164,6 +164,12 @@ Token Lexer::next_token()
         advance();
         return t;
     }
+    case '&':
+    {
+        Token t = make_token(TokenType::OP_ADDRESS);
+        advance();
+        return t;
+    }
     case '/':
     {
         Token t = make_token(TokenType::OP_DIVIDE);
@@ -307,6 +313,10 @@ Token Lexer::scan_identifier()
         type = TokenType::KEYWORD_WHILE;
     else if (identifier == "return")
         type = TokenType::KEYWORD_RETURN;
+    else if (identifier == "break")
+        type = TokenType::KEYWORD_BREAK;
+    else if (identifier == "continue")
+        type = TokenType::KEYWORD_CONTINUE;
     else if (identifier == "string")
         type = TokenType::KEYWORD_STR;
 
