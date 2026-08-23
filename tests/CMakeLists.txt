@@ -1,7 +1,5 @@
 # tests/CMakeLists.txt
-cmake_minimum_required(VERSION 3.18)
 
-# Fetch Google Test
 include(FetchContent)
 FetchContent_Declare(
     googletest
@@ -9,24 +7,32 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(googletest)
 
-# Enable testing
 enable_testing()
 
-# Define test executable
-file(GLOB TEST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
+set(MINIC_LIB_SOURCES
+    ${CMAKE_SOURCE_DIR}/src/Lexer.cpp
+    ${CMAKE_SOURCE_DIR}/src/Parser.cpp
+    ${CMAKE_SOURCE_DIR}/src/SemanticAnalyzer.cpp
+    ${CMAKE_SOURCE_DIR}/src/IRGenerator.cpp
+    ${CMAKE_SOURCE_DIR}/src/CodeGenerator.cpp
+)
 
-add_executable(minic_tests ${TEST_SOURCES} 
-                ${CMAKE_SOURCE_DIR}/src/Lexer.cpp
-                ${CMAKE_SOURCE_DIR}/src/Parser.cpp
-                ${CMAKE_SOURCE_DIR}/src/SemanticAnalyzer.cpp
-                ${CMAKE_SOURCE_DIR}/src/IRGenerator.cpp
-                ${CMAKE_SOURCE_DIR}/src/CodeGenerator.cpp)
+set(MINIC_TEST_SOURCES
+    main.cpp
+    TestAST.cpp
+    TestLexer.cpp
+    TestParser.cpp
+    TestSemanticAnalyzer.cpp
+    TestIRGenerator.cpp
+)
 
-# Link against Google Test and compiler sources
+add_executable(minic_tests
+    ${MINIC_TEST_SOURCES}
+    ${MINIC_LIB_SOURCES}
+)
+
 target_link_libraries(minic_tests PRIVATE gtest gtest_main)
 
-# Include directories for compiler headers
-target_include_directories(minic_tests PRIVATE ${CMAKE_SOURCE_DIR}/include/miniC)
+target_include_directories(minic_tests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
-# Add test
 add_test(NAME miniCTests COMMAND minic_tests)
