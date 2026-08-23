@@ -130,7 +130,7 @@ TEST(ASTNodeTest, CallExpr)
 
 TEST(ASTNodeTest, ExprStmt)
 {
-    ExprStmt stmt(std::make_unique<CallExpr>("print", std::vector<std::unique_ptr<Expr>>{}));
+    ExprStmt stmt(std::make_unique<CallExpr>("print", std::vector<std::unique_ptr<Expr>> { }));
     auto* call = dynamic_cast<CallExpr*>(stmt.expression.get());
     ASSERT_NE(call, nullptr);
     EXPECT_EQ(call->callee, "print");
