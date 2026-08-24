@@ -1,4 +1,6 @@
 #include "minic/IRGenerator.hpp"
+#include <algorithm>
+#include <iterator>
 
 namespace minic
 {
@@ -249,10 +251,8 @@ std::string IRGenerator::generate_expr(const Expr& expr)
     {
         std::vector<std::string> arg_temps;
         arg_temps.reserve(call->arguments.size());
-        for (const auto& arg : call->arguments)
-        {
-            arg_temps.push_back(generate_expr(*arg));
-        }
+        std::transform(call->arguments.begin(), call->arguments.end(), std::back_inserter(arg_temps),
+            [this](const std::unique_ptr<Expr>& arg) { return generate_expr(*arg); });
         std::string result_temp = new_temp();
         emit(IROpcode::CALL, result_temp, call->callee, "", std::move(arg_temps));
         return result_temp;

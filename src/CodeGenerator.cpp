@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <stdexcept>
 #include <vector>
 
@@ -103,19 +104,15 @@ void CodeGenerator::plan_temporary_registers(const IRFunction& func)
 
     for (const auto& [name, iv] : intervals)
     {
-        if (temp_remaining_uses_.find(name) == temp_remaining_uses_.end())
-            temp_remaining_uses_[name] = 0;
+        temp_remaining_uses_.try_emplace(name, 0);
 
         if (iv.first_def < 0)
             continue;
         const int last = (iv.last_use >= 0) ? iv.last_use : iv.first_def;
-        for (int call_idx : call_sites)
+        if (std::any_of(call_sites.begin(), call_sites.end(),
+                [&](int call_idx) { return iv.first_def < call_idx && last > call_idx; }))
         {
-            if (iv.first_def < call_idx && last > call_idx)
-            {
-                must_spill_temps_.insert(name);
-                break;
-            }
+            must_spill_temps_.insert(name);
         }
     }
 
@@ -457,8 +454,8 @@ void CodeGenerator::emit_instruction(const IRInstruction& instr)
 {
     std::vector<std::string> arg_locs;
     arg_locs.reserve(instr.args.size());
-    for (const auto& arg : instr.args)
-        arg_locs.push_back(get_loc(arg));
+    std::transform(instr.args.begin(), instr.args.end(), std::back_inserter(arg_locs),
+        [this](const std::string& arg) { return get_loc(arg); });
 
     std::string res_loc = get_loc(instr.result);
     std::string op1_loc = get_loc(instr.operand1);
