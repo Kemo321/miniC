@@ -110,7 +110,10 @@ void CodeGenerator::plan_temporary_registers(const IRFunction& func)
             continue;
         const int last = (iv.last_use >= 0) ? iv.last_use : iv.first_def;
         if (std::any_of(call_sites.begin(), call_sites.end(),
-                [&](int call_idx) { return iv.first_def < call_idx && last > call_idx; }))
+                [&](int call_idx)
+                {
+                    return iv.first_def < call_idx && last > call_idx;
+                }))
         {
             must_spill_temps_.insert(name);
         }
@@ -455,7 +458,10 @@ void CodeGenerator::emit_instruction(const IRInstruction& instr)
     std::vector<std::string> arg_locs;
     arg_locs.reserve(instr.args.size());
     std::transform(instr.args.begin(), instr.args.end(), std::back_inserter(arg_locs),
-        [this](const std::string& arg) { return get_loc(arg); });
+        [this](const std::string& arg)
+        {
+            return get_loc(arg);
+        });
 
     std::string res_loc = get_loc(instr.result);
     std::string op1_loc = get_loc(instr.operand1);
